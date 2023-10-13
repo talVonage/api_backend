@@ -1,21 +1,12 @@
 project:
-    name: vonage_backend
+    name: helloworld
 instance:
-    name: vonage_backend
+    name: dev
     runtime: python3
     region: aws.euw1
-    application-id: 773c2b45-c20a-4d6b-8afe-24ce29ba6f92
-    entrypoint: [node, index.js]
-    capabilities:
-        - voice
-        - messages-v1
-    environment:
-        - name: VONAGE_NUMBER
-          value: "44700000000"
-        - name: INTEGRATION_API_KEY
-          secret: MY_SECRET_API_KEY
-    secrets:
-        - MY_SECRET_API_KEY
+    application-id: 38bb1aa0-dff3-4190-9e4b-b34a7b43d028
+    entrypoint:
+        [python3, main.py]
 debug:
-    name: debug
-    entrypoint: [nodemon, --inspect, index.js]
+    entrypoint:
+        [nodemon, --exec, python3, -m, debugpy, --listen, localhost:9229, main.py]
