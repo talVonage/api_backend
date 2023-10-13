@@ -1,0 +1,21 @@
+#### GLOBAL / Services
+flask
+
+#vonage
+#elasticsearch
+#pandas
+
+#### WEB - FLASK
+
+#flask_login
+#flask_sqlalchemy
+#pyodbc
+#flask_wtf
+#wtforms
+#email_validator
+#flask_mail
+
+### To Remove
+#flask_sockets
+#flask_socketio
+#eventlet
