@@ -33,6 +33,6 @@ if __name__ == '__main__':
     #event_loop = asyncio.new_event_loop()
     #asyncio.set_event_loop(event_loop)
     #event_loop.run_until_complete(setupListeners())
-    port = int(os.getenv('NERU_APP_PORT'))
+    port = int(os.getenv('VCR_PORT')) #int(os.getenv('NERU_APP_PORT'))
     # uvicorn.run(app, host="0.0.0.0", port=port)
     app.run(host="0.0.0.0", port=port)
