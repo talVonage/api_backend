@@ -9,4 +9,4 @@ instance:
         [python3, main.py]
 debug:
     entrypoint:
-        [nodemon, --exec, python3, -m, debugpy, --listen, localhost:9229, main.py]
+        [nodemon, --exec, python3, -m, debugpy, --listen, localhost:3001, main.py]
