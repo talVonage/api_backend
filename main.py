@@ -4,6 +4,9 @@ sys.path.append("vendor")
 #import json
 #import asyncio
 
+for name, value in os.environ.items():
+    print("{0}: {1}".format(name, value))
+
 from flask import Flask, request, jsonify
 from pprint import pprint
 
@@ -33,6 +36,6 @@ if __name__ == '__main__':
     #event_loop = asyncio.new_event_loop()
     #asyncio.set_event_loop(event_loop)
     #event_loop.run_until_complete(setupListeners())
-    port = int(os.getenv('VCR_PORT')) #int(os.getenv('NERU_APP_PORT'))
+    port = 96969 # int(os.getenv('VCR_PORT')) #int(os.getenv('NERU_APP_PORT'))
     # uvicorn.run(app, host="0.0.0.0", port=port)
     app.run(host="0.0.0.0", port=port)
