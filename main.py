@@ -35,4 +35,4 @@ if __name__ == '__main__':
     #event_loop.run_until_complete(setupListeners())
     #port = 9000 # int(os.getenv('NERU_APP_PORT'))
     # uvicorn.run(app, host="0.0.0.0", port=port)
-    app.run(host="localhost", port=3000)
+    app.run(host="localhost", port=8080)
