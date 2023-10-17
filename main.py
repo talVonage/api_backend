@@ -2,7 +2,7 @@
 import sys, os
 sys.path.append("vendor")
 #import json
-#import asyncio
+import asyncio
 
 for name, value in os.environ.items():
     print("{0}: {1}".format(name, value))
@@ -17,6 +17,10 @@ print ("hallo")
 @app.route('/')
 def hello():
     return 'Hello, World!'
+
+@app.get('/_/health')
+async def health():
+    return 'OK'
 
 
 @app.route('/inbound', methods=['POST', 'GET'])
