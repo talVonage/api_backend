@@ -1,0 +1,17 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+  {% if current_user.is_authenticated %}
+    <p>Hi {{ current_user.name }}!</p>
+    <a href="{{ url_for('main_bp.logout') }}">Log out</a>
+  {% endif %}
+<div class="card">
+  <img src="{{ url_for('static', filename='img/logo.png') }}" class="logo" />
+  <h1 class="site-title">{{ title }}</h1>
+  <p class="subtitle">Yoyo properties will sho up in minute ... </p>
+  <a href="/props/" class="dash-link">
+    <span>Properties reports</span>
+    <i class="fas fa-arrow-right"></i>
+  </a>
+</div>
+{% endblock %}

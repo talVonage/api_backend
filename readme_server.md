@@ -15,9 +15,19 @@ Update Neru version
     sudo mv ./neru /usr/local/bin 								                # move 
     rm ./neru_darwin_amd64.tar.gz							                    # rm old file
 
-Local debug : 
+Local debug :
+    neru debug
+    make deploy 
 
-    neru debug 
+Workspace debug:
+    vcr debug 
+    make deploy 
+
+Clear open ports:
+    sudo apt install lsof
+    lsof -ti:9229  [port number]
+    
+
 
 
 

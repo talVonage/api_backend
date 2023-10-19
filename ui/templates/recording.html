@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %} Johnny recording ! {% endblock title %}
+
+{% block content %}
+
+    <div class="right_col" role="main">
+      <div class="row">
+        <div class="col-md-4 col-sm-8 col-xs-12 tile_stats_count">
+          <span class="login_content" style="float: left">start Johnny recording</span>
+          <button id="start_recording" class="button_green" type="button">Lets start! </button>
+          <button id="stop_recording" class="button_red" type="button">Stop recording </button>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+        const jwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODU4MjE3MDAsImp0aSI6Ijk3NmUzNWUwLTAyNDctMTFlZS1hMmRiLTg1MTk1NmU5OTkyZCIsImFwcGxpY2F0aW9uX2lkIjoiMWY0Mzc1YzgtMDU1YS00NWJmLWE4YWItZTI0NjZjZGI1MzNhIiwic3ViIjoiQWxpY2UiLCJleHAiOjE2ODU4MjE3MjE3NTYsImFjbCI6eyJwYXRocyI6eyIvKi91c2Vycy8qKiI6e30sIi8qL2NvbnZlcnNhdGlvbnMvKioiOnt9LCIvKi9zZXNzaW9ucy8qKiI6e30sIi8qL2RldmljZXMvKioiOnt9LCIvKi9pbWFnZS8qKiI6e30sIi8qL21lZGlhLyoqIjp7fSwiLyovYXBwbGljYXRpb25zLyoqIjp7fSwiLyovcHVzaC8qKiI6e30sIi8qL2tub2NraW5nLyoqIjp7fSwiLyovbGVncy8qKiI6e319fX0.ic-0bL1FMH5zl478FFYTREuGZKXjOx-3MB_Bzsib86VvcuDQIb7KcWoJpqSY_blDL-sOE96ma79hT9Z_E4ZCK4B2tNaGrgXXi1Pof2dnhr_dLdb0SGf7__lsgA1WgIZhBo0fRdU7eJeaXr3V075r1GlcMm7k16NYiTSTjlCB3DzQM8JUy9sUKwR7AZzW2ISDY4vGLh7WpUCGFnDqrLbZBZzi-IFCmMgqyd3VS1NA4bXxBEHR-mf4H3F8maE1Ql32tC-R3qG9RtridTpF7psazbTuq77Ansb_vBeE5iEqscWPxYKGT2gaeZPWGev1G_j_jUQE4I6aUfhRxrL_gGZKnw";
+
+        const btn_start_record= document.getElementById("start_recording");
+        const btn_stop_record= document.getElementById("stop_recording");
+
+        new NexmoClient({ debug: false })
+            .createSession(jwt)
+            .then(app => {
+                btn_start_record.addEventListener("click", () => {
+                    console.log("Calling App...");
+                    text_name = 'record' // document.getElementById('my-text').value;
+                    app.callServer(text_name);
+                });
+              app.on("member:call", (member, call) => {
+                btn_stop_record.addEventListener("click", () => {
+                  console.log("Hanging up...");
+                  call.hangUp();
+                });
+              });
+            })
+            .catch(console.error);
+    </script>
+
+{% endblock content %}
