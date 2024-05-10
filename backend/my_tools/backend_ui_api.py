@@ -147,14 +147,14 @@ def test_1 ():
 
 def test_2 ():
     res = api.wa_get_templates (
-        app_id="bd240d61-98fd-4379-9850-aec8ecd867aa",
-        app_secret="/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key",
-        waba_id="106174865728265",update=True )
+        app_id="",
+        app_secret="",
+        waba_id="",update=True )
 
     for k,v in res.items():
         print (v['template'])
         print ("-------------------")
-        con = api.wa_exec_template (template=v['template'], send_from='447520691600', send_to="447754351600")
+        con = api.wa_exec_template (template=v['template'], send_from='', send_to="")
         json_res = json.dumps(con, indent=2)
         print (json_res)
 

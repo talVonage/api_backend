@@ -6,6 +6,7 @@ logging.basicConfig(level=logging.INFO)
 
 vonage = Vonage (key=conf.VON_KEY, secret=conf.VON_SECRET)
 
+# hello world !
 def test_vonage_app ():
     vonage.get_balance()
     app1= vonage.get_apps()

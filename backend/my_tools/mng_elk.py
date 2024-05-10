@@ -428,15 +428,15 @@ class Elk ():
             return default
 
 def test():
-    elk = Elk (host='nexmo-nlb.kibana.vonagenetworks.net', port=443,
-               api_key='bmVtSXQ0b0J0NkxReVBQU0R3Njc6WkFjYkh1SS1SWEtZb2hXTVBHd01wQQ==')
-    pd = elk.get_by_api_key_and_id(api_key="292e6c87", msg_id="cda05809-5b1d-42be-98d8-6b2a29dcbf7f")
+    elk = Elk (host='', port=443,
+               api_key='')
+    pd = elk.get_by_api_key_and_id(api_key="", msg_id="")
     print (pd)
 # test()
 
 def get_services ():
-    elk = Elk(host='nexmo-nlb.kibana.vonagenetworks.net',
-              api_key='bmVtSXQ0b0J0NkxReVBQU0R3Njc6WkFjYkh1SS1SWEtZb2hXTVBHd01wQQ==')
+    elk = Elk(host='',
+              api_key='')
     #pd = elk.get_by_api_key_and_id(api_key="292e6c87", msg_id="cda05809-5b1d-42be-98d8-6b2a29dcbf7f")
     #x = elk.query_vonage_should (should_filter_type=elk.FILTER_BY_API,
     #                             props="f4e39cc6",
