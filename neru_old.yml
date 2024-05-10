@@ -6,10 +6,10 @@ instance:
     region: aws.euw1
     application-id: 38bb1aa0-dff3-4190-9e4b-b34a7b43d028
     entrypoint:
-        [python3, main.py]
+        [python3, backend\server.py]
 debug:
     entrypoint:
-        [python3, main.py]
+        [python3, backend\server.py]
 
 
 

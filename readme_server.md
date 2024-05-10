@@ -2,6 +2,26 @@
 cd  /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend/ui_assets
 npm run dev
 
+# VCR Configuration
+https://developer.vonage.com/en/vcr/getting-started/working-locally?lang=macos
+
+Install - MacOs 
+open terminal
+sudo chown -R $(whoami) /usr/local/bin
+sudo curl -L https://raw.githubusercontent.com/Vonage/cloud-runtime-cli/main/script/install.sh | sh
+
+vcr configure
+    api key: 292e6c87
+    api secret: e2IN2xM3Amwx0Ktg
+vcr upgrade
+vcr deply 
+
+
+create new project:
+cd /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend
+vcr init
+
+
 # neru configuration
 
 Install Neru CLI
@@ -18,6 +38,10 @@ Update Neru version
     chmod +x ./neru									                            # Pemmrions 
     sudo mv ./neru /usr/local/bin 								                # move 
     rm ./neru_darwin_amd64.tar.gz							                    # rm old file
+
+GitHub Repo:
+    https://github.com/talVonage/api_backend
+
 
 cd /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend
     Local debug :

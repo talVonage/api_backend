@@ -14,7 +14,7 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO
 from asset import Asset
 
-from api_backend.backend.my_tools.config import Config
+from my_tools.config import Config
 from my_tools.globals import get_not_none
 from my_tools.backend_ui_api import Backend_Ui_Api
 from my_tools.mng_elk import Elk

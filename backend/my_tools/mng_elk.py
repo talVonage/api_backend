@@ -16,10 +16,7 @@ from my_tools.globals import ping_url
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-"""
-    Host : "nexmo-nlb.kibana.vonagenetworks.net"
-    api_key : 'bmVtSXQ0b0J0NkxReVBQU0R3Njc6WkFjYkh1SS1SWEtZb2hXTVBHd01wQQ=='
-"""
+
 
 
 
