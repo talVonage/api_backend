@@ -1,0 +1,220 @@
+{% extends "/site_template/base.html" %}
+
+{% block title %} SMS {% endblock title %}
+
+{% block content %}
+    
+    Tech proider Pre Filled Data
+    <vwc-divider role="presentation"></vwc-divider>
+    
+    <vwc-layout gutters="small" column-spacing="small">
+        <vwc-text-field required label="business name" id="company_name" name="company_name" type="text" shape="pill"
+                        placeholder="my company LTD."  icon="company-solid" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <vwc-text-field required label="Business email" id="company_email" name="company_email" type="email" shape="pill"
+                        placeholder=""  autocomplete="email" icon="mailbox-solid" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <vwc-text-field required label="Business website" id="company_website" name="company_website" type="text" shape="pill"
+                        placeholder=""  autocomplete="" icon="" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+        
+    </vwc-layout>
+
+    Tech provider pre registered phone numbers
+    <vwc-divider role="presentation"></vwc-divider>
+
+
+    <vwc-layout gutters="small" row-spacing="small" column-basis="block">
+        <vwc-layout gutters="small" column-spacing="medium">
+
+            <vwc-select id="select_country" label="country code" icon="flag-united-states">
+                <vwc-option value="US" text="+1 " icon="flag-united-states"></vwc-option>
+                <vwc-option value="GB" text="+44" icon="flag-united-kingdom"></vwc-option>
+                <vwc-option value="IL" text="+972" icon="flag-israel"></vwc-option>
+            </vwc-select>
+            <script>
+
+            </script>
+
+            <vwc-combobox id="combo_buy_numbers" name="combo_reg" autocomplete="both" label="Buy numbers" style="width: 80%;">
+                <vwc-option id="simpletext" text="Simple text"></vwc-option>
+                {% for key in buy_numbers %}
+                    <vwc-option id={{key}} text={{key}}></vwc-option>
+                {% endfor %}
+            </vwc-combobox>
+
+            <vwc-combobox id="combo_api_numbers" name="combo_api_numbers" autocomplete="both" label="Account numbers" style="width: 80%;">
+                <vwc-option id="simpletext" text="Simple text"></vwc-option>
+                {% for key in all_numbers %}
+                    <vwc-option id={{key[0]}} text={{key[0]}}></vwc-option>
+                {% endfor %}
+            </vwc-combobox>
+            
+            <label id="label_reg">Ollal !!!</label>
+        </vwc-layout>
+        
+        <div class="buttons">
+            <button id="btn_reg"
+                    style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
+                Is numer is pre verfied ? 
+            </button> 
+        </div>
+    </vwc-layout>
+
+    
+    Tech provider embeded sign up  !!!
+    <button id="myButton"
+             style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
+         TEST TEST TEST
+     </button>
+
+
+     <button onclick="launchWhatsAppSignup()"
+             style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
+         Sign up for WhatsApp
+     </button>
+
+    <script>
+        const select = document.querySelector('vwc-select');
+            select?.addEventListener('change', (e) => {
+                select.icon = select.selectedOptions[0].icon;
+                var combo = $("#combo_buy_numbers");
+                combo.empty();
+                $.ajax({
+                    url: "/tech_reg_load_numbers",
+                    type: "POST",
+                    data: JSON.stringify({country: select.value}),
+                    contentType: "application/json",
+                    success: function(response) {
+                        console.log(response);
+                         $.each(response, function(index, value) {
+                            console.log(value);
+                             combo.append("<vwc-option text=" + value + "></vwc-option>");
+                         });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error sending message:", error);
+                    }
+                });
+            });
+
+        $(document).ready(function(){
+            $("#btn_reg").click(function(){
+                var phone_num = $("#combo_reg").val();
+                console.log ("Checking number "+phone_num)
+
+
+                $.ajax({
+                    url: "/tech_reg_validate_number", 
+                    type: "POST",
+                    data: JSON.stringify({data: phone_num}), // Change the message content as needed
+                    contentType: "application/json",
+                    success: function(response) {
+                        console.log("Message sent successfully!");
+                        console.log(response);
+                        $("#label_reg").text(response); 
+                        // You can handle the response from the server here
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error sending message:", error);
+                    }
+                });
+            });
+
+            $("#myButton").click(function(){
+                var c_name = $("#company_name").val();
+                var c_mail = $("#company_mail").val();
+                var c_website = $("#company_website").val();
+
+                alert ("Hello world !!! "+ c_name);
+
+                $.ajax({
+                    url: "/tech_reg", // Change this to your Flask route
+                    type: "POST",
+                    data: JSON.stringify({data: "JOHNNNY"}), // Change the message content as needed
+                    contentType: "application/json",
+                    success: function(response) {
+                        console.log("Message sent successfully!");
+                        console.log(response);
+                        // You can handle the response from the server here
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error sending message:", error);
+                    }
+                });
+            });
+        });
+
+        window.fbAsyncInit = function () {
+            // INIT PARAMTERS 
+            var app_id = '1386955012702924'  // Meta App ID
+            
+            // JavaScript SDK configuration and setup
+            FB.init({
+            appId:    app_id, // Meta App ID
+            cookie:   true, // enable cookies
+            xfbml:    true, // parse social plugins on this page
+            version:  'v18.0' //Graph API version
+            });
+        };
+
+        // Load the JavaScript SDK asynchronously
+        (
+            function (d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "https://connect.facebook.net/en_US/sdk.js";
+                fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk')
+        );
+
+        // Facebook Login with JavaScript SDK
+        function launchWhatsAppSignup() {
+            var c_name = $("#company_name").val();
+            var c_mail = $("#company_mail").val();
+            var c_website = $("#company_website").val();
+            
+            var config_id = '995782168666847'
+            var solution_id = '842627454528807'
+
+            // Launch Facebook login
+            FB.login(
+                function (response) {
+                    if (response.authResponse) {
+                        const code = response.authResponse.code;
+                        // The returned code must be transmitted to your backend,
+                        // which will perform a server-to-server call from there to our servers for an access token
+                    } else {
+                        console.log('User cancelled login or did not fully authorize.');
+                    }
+                },
+                {
+                    config_id: config_id, // configuration ID goes here
+                    response_type: 'code',    // must be set to 'code' for System User access token
+                    override_default_response_type: true, // when true, any response types passed in the "response_type" will take precedence over the default types
+                    extras: {
+                        setup: {
+                            solutionID: solution_id,
+                            business: {	name: c_name,
+                                        email: c_mail,
+                                        website: c_website}	
+                    },
+
+                        }
+                    }
+                
+                );
+        };
+
+    </script>
+
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+
+
+
+{% endblock content %}
+

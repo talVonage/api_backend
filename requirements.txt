@@ -1,8 +1,35 @@
 #### GLOBAL / Services
-urllib3==1.26.17
+urllib3
+python-dotenv
 Flask
 Flask_socketio
+
+### NERU AND VCR DEPLOYMENT
 vonage_cloud_runtime
 debugpy
 chardet
 
+### BACKEND
+vonage
+elasticsearch
+pandas
+
+
+#### WEB - FLASK - OLD STUFF
+#flask_login
+#flask_sqlalchemy
+#pyodbc
+#flask_wtf
+#wtforms
+#email_validator
+#flask_mail
+
+### To Remove
+#flask_sockets
+#flask_socketio
+#eventlet
+
+
+
+requests
+setuptools

@@ -1,3 +1,7 @@
+# Build node modules 
+cd  /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend/ui_assets
+npm run dev
+
 # neru configuration
 
 Install Neru CLI
@@ -15,23 +19,27 @@ Update Neru version
     sudo mv ./neru /usr/local/bin 								                # move 
     rm ./neru_darwin_amd64.tar.gz							                    # rm old file
 
-Local debug :
-    neru debug
-    make deploy 
+cd /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend
+    Local debug :
+        neru debug
+        make deploy 
 
-Workspace debug:
-    vcr debug 
-    make deploy 
+    Workspace debug:
+        vcr debug 
+        make deploy 
 
 Clear open ports:
     sudo apt install lsof
     lsof -ti:9229  [port number]
-    
+
+Meta APIs 
+Create a developer account : 
+    https://developers.facebook.com/async/registration/dialog/?src=default
+    https://developers.facebook.com/
 
 
-
-
- 
-
-
-
+Create certificate:
+  - Used default properties. create cert.pem and key.pem under ssl_certificate folder 
+cd /Users/tshany/Documents/gmail_vonage/code/vonage_202309/api_backend/backend/certs
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+   

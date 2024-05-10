@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" class="vvd-root">
+<head>
+  {% include "site_template/header.html" %}
+</head>
+<body>
+  <style>
+    html { /* for demo purposes */
+      block-size: 300px;
+    }
+    vwc-fab {
+      position: fixed;
+      inset: auto auto 8px 8px;
+      z-index: 2;
+    }
+    vwc-header::part(base) {
+      position: fixed;
+      top: 0;
+      z-index: 2;
+    }
+    vwc-side-drawer::part(base) {
+      block-size: calc(100vh - var(--vvd-header-block-size));
+      bottom: 0;
+      top: auto;
+    }
+    vwc-side-drawer > main {
+      padding-block-start: var(--vvd-header-block-size);
+    }
+    table
+    {
+      /* table-layout:fixed;  */
+      width:100%;
+    }
+
+    .success {
+        color: green;
+        float: right;
+        margin: 10px;
+        font-size: 12px; 
+    }
+    .failed {
+        color: red;
+        float: right;
+        margin: 10px;
+        font-size: 20px; 
+    }
+
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <vwc-header>
+    Header content
+    <!-- side drawer custom element assigned to header's 'app-content' slot -->
+    <vwc-side-drawer open slot="app-content">
+
+      <vwc-layout gutters="small">
+        <vwc-nav id="sideNav">
+          <vwc-nav-item href="/" text="Home" icon="home-line" data-value="Home" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/sms" text="SMS" icon="chat-line" data-value="SMS" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/messages" text="Messages" icon="envelope-solid" data-value="Messages" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/verify" text="Verify" icon="check-call-line" data-value="Verify" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/voice" text="Voice" icon="voicemail-transcript-line" data-value="Voice" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/tech" text="WhatsApp tech" icon="whatsapp-mono" data-value="Tech" onclick="onClick(this)"></vwc-nav-item>
+        </vwc-nav>
+      </vwc-layout>
+
+
+      <!-- main element assigned to side-drawer's 'app-content' slot -->
+      <main slot="app-content">
+        <vwc-layout gutters="small" column-basis="block">
+          
+          <div id="div_msg">
+            <vwc-alert id="global_msg" placement="top" headline="" text="" connotation="alert" removable close></vwc-alert>
+          </div>
+
+          <div id="div_alert">
+            <vwc-banner id="global_alert" text="ALERT! Something went wrong!" connotation="alert" hidden removable></vwc-banner>
+          </div>
+          
+          {% block content %}
+            <h2>
+              Scroll this window
+            </h2>
+
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. In mollis ante est, ac porta sapien rutrum in. Fusce id pulvinar massa. In est erat, gravida sed velit id, tempus tempus metus. Proin mollis auctor orci. Curabitur vestibulum elementum imperdiet. Mauris ac nisl vel nisi auctor sodales. Vestibulum vel rutrum leo, a convallis tellus. Aliquam vel ultricies elit, eget malesuada orci. Praesent ut blandit nisl. Morbi ut ligula faucibus ante pellentesque condimentum sit amet ac dui. Suspendisse potenti. Ut et massa arcu. Pellentesque pellentesque id tortor at ornare.
+            </p>
+
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. In mollis ante est, ac porta sapien rutrum in. Fusce id pulvinar massa. In est erat, gravida sed velit id, tempus tempus metus. Proin mollis auctor orci. Curabitur vestibulum elementum imperdiet. Mauris ac nisl vel nisi auctor sodales. Vestibulum vel rutrum leo, a convallis tellus. Aliquam vel ultricies elit, eget malesuada orci. Praesent ut blandit nisl. Morbi ut ligula faucibus ante pellentesque condimentum sit amet ac dui. Suspendisse potenti. Ut et massa arcu. Pellentesque pellentesque id tortor at ornare.
+            </p>
+          {% endblock content %}
+
+        </vwc-layout>
+      </main>
+      <vwc-fab icon='menu-solid' slot="app-content" onclick="sideDrawer.open = !sideDrawer.open"></vwc-fab>
+    </vwc-side-drawer>
+  </vwc-header>
+
+
+  <vwc-header alternate>
+    <vwc-icon name="vonage-mono"></vwc-icon>
+    Voange Demo
+    <form id="form_api" method="post" action="/submit_api">
+      <vwc-text-field id="api_key" name="api_key" shape="pill" placeholder="API Key"></vwc-text-field>
+      <vwc-text-field id="api_sec" name="api_sec" shape="pill" placeholder="API Secret"></vwc-text-field>
+      <vwc-button slot="action-items" type="submit" appearance="filled" label="Update API Key And Secret" icon="key-solid"></vwc-button>
+      {% if is_connected %}
+        <div class="success">{{msg_conn}}</div>
+      {% else %}
+        <div class="failed">{{msg_conn}}</div>
+      {% endif %}
+
+    </form>
+    <vwc-button slot="action-items" icon="github-mono"></vwc-button>
+
+  </vwc-header>
+
+
+
+  <script>
+    function onClick(el) {
+      currentNavItem = document.querySelector('vwc-nav-item[aria-current="page"]');
+      currentNavItem?.removeAttribute('aria-current');
+      el.setAttribute('aria-current', 'page');
+    }
+
+    // Set the selected menu item based on the current page
+    document.addEventListener('DOMContentLoaded', function () {
+        var currentPath = window.location.pathname;
+        var msg = {{ msg_dict | tojson | safe }};
+        console.log(msg);
+
+        // currentPath = currentPath.substring(1);  // Remove the leading slash
+        var currentNavItem = document.querySelector('vwc-nav-item[href="' + currentPath + '"]');
+        if (currentNavItem) {
+            currentNavItem.setAttribute('aria-current', 'page');
+        }
+
+        if ('error' in msg) {
+          const g_msg = document.getElementById('global_msg');
+          g_msg.connotation="alert";
+          g_msg.headline="YOYO ERROR !! ";
+          g_msg.text=msg["error"];
+          g_msg.open=true;
+        }
+        else if ('data' in msg) {
+          const g_msg = document.getElementById('global_msg');
+          g_msg.connotation="success";
+          g_msg.headline="MESSAGE : ";
+          g_msg.text=msg["data"];
+          g_msg.open=true;
+        }
+    });
+
+  </script>
+
+
+
+  {% block footer %}
+    <footer>
+      {% include "site_template/footer.html" %}
+    </footer>
+  {% endblock footer %}
+</body>
+</html>

@@ -1,0 +1,425 @@
+{% extends "/site_template/base.html" %}
+
+{% block title %} Messages {% endblock title %}
+
+{% block content %}
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.8.4/themes/prism.min.css">
+
+	<!-- Prism main -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.8.4/prism.min.js"></script>
+
+	<!-- Prism languages -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.8.4/components/prism-css.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.8.4/components/prism-javascript.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.8.4/components/prism-json.min.js"></script>
+
+	<style>
+		vwc-divider {
+			display: flex;
+			align-items: center;
+		}
+
+		#json_template, #json_send, #highlighting, #highlighting2  {
+			/* Both elements need the same text and space styling so they are directly on top of each other */
+			margin: 10px;
+			padding: 10px;
+			border: 0;
+			width: calc(100% - 32px);
+			height: 300px;
+		}
+
+		.parent-textarea {
+            position: relative;   /* Set position to relative */
+            /* width: 300px;      /*Set width for illustration purposes */
+            /* height: 200px;     /*Set height for illustration purposes */
+            /* border: 1px solid #ccc; /* Add a border for visualization */
+        }
+
+		#json_template, #json_send, #highlighting, #highlighting2, #highlighting *, #highlighting2 * {
+			/* Also add text styles to highlighting tokens */
+			font-size: 10pt;
+			font-family: monospace;
+			line-height: 20pt;
+		}
+
+		#json_template, #json_send, #highlighting, #highlighting2 {
+			position: absolute; 
+			top: 0;
+			left: 0;
+		}
+
+		/* Move the textarea in front of the result */
+		#json_template, #json_send {
+			z-index: 1;
+		}
+
+		#highlighting, #highlighting2 {
+			z-index: 0;
+		}
+
+		/* Make textarea almost completely transparent */
+		#json_template, #json_send {
+			color: transparent;
+			background: transparent;
+			caret-color: white; /* Or choose your favorite color */
+		}
+
+		/* Can be scrolled */
+		#json_template, #json_send, #highlighting, #highlighting2 {
+			overflow: auto;
+			white-space: nowrap; /* Allows textarea to scroll horizontally */
+		}
+
+		/* No resize on textarea */
+		#json_template, #json_send {
+			resize: none;
+		}
+
+		#json_template, #json_send, #highlighting, #highlighting2, #highlighting *, #highlighting2 * {
+			/* Also add text styles to highlighing tokens */
+			tab-size: 2;
+		}
+
+	</style>
+
+
+	{% for message in msg_list %}
+		<vwc-alert text="{{ message }}" placement="top" removable open></vwc-alert>
+    {% endfor %}
+
+	<form id="upload_application" enctype="multipart/form-data">
+		<vwc-layout gutters="small" column-spacing="small">
+		
+				<vwc-select label="Select an application to connect">
+					{% for item in all_apps %}
+						<vwc-option value="{{item[0]}}" text="{{ item[1] }}" ></vwc-option>
+					{% endfor %}
+				</vwc-select>
+
+				<vwc-file-picker id="file_app_secret">
+					Drag & Drop the private key file to connect into your application
+					<span slot="helper-text">Upload private key
+						<a href="#">Learn how create an application</a>
+					</span>
+				</vwc-file-picker>
+
+				<div class="buttons">
+					<vwc-button type="submit" appearance="filled" label="Connect to application"></vwc-button>
+				</div>
+			
+		</vwc-layout>
+	</form>
+
+	<form id="submitForm" method="post" action="/submit_wa">
+		<vwc-layout gutters="small" column-spacing="medium">
+			<vwc-layout gutters="small" row-spacing="small" column-basis="block">
+				<vwc-combobox id="wa_combobox" name="wa_combobox" autocomplete="both" label="Choose or create new template">
+					{% for key in all_templates %}
+						<vwc-option id={{key}} text={{key}}></vwc-option>
+					{% endfor %}
+				</vwc-combobox>
+				<vwc-combobox id="wa_category" name="wa_category" label="Template category">
+					{% for key in wa_categories %}
+						<vwc-option id={{key}} name={{key}} text={{key}}></vwc-option>
+					{% endfor %}
+				</vwc-combobox>
+				<vwc-combobox id="wa_lang" name="wa_lang" label="Template language">
+					{% for  key,val in wa_lang.items() %}
+						<vwc-option id={{key}} name={{key}} text={{val}}></vwc-option>
+					{% endfor %}
+				</vwc-combobox>
+
+				<vwc-text-field id="wa_status" disabled label="Template status"></vwc-text-field>
+
+				<div class="buttons">
+					<vwc-button type="submit" appearance="filled" label="Create or Update template" appearance="Update OR save" ></vwc-button>
+				</div>
+			</vwc-layout>
+
+			<div class="parent-textarea">
+				<textarea id="json_template" placeholder="Json template..." spellcheck="false" 
+						oninput="update(this.value, '#highlighting-content'); sync_scroll(this, '#highlighting');" 
+						onscroll="sync_scroll(this, '#highlighting');" 
+						onkeydown="check_tab(this, event);">
+				</textarea>
+				<pre id="highlighting" aria-hidden="true">
+					<code class="language-json" id="highlighting-content"></code>
+				</pre>
+			</div>
+
+		</vwc-layout>
+	</form>
+
+	<vwc-divider role="presentation"></vwc-divider>
+  	Send massages using WhatsApp tamplates
+  	<vwc-divider role="presentation"></vwc-divider>
+
+	<vwc-layout gutters="small" column-spacing="medium">
+		<vwc-layout gutters="small" row-spacing="small" column-basis="block">
+			<vwc-text-field required label="From:" id="send_from" placeholder="" type="tel" name="from" autocomplete="tel"
+						icon="phone-number-line" shape="pill"
+						char-count style="justify-self: flex-start;"></vwc-text-field>
+
+			<vwc-text-field required label="To:" id="send_to" placeholder="" type="tel" name="to" autocomplete="tel"
+						icon="phone-number-line" shape="pill"
+						char-count style="justify-self: flex-start;"></vwc-text-field>
+
+			<vwc-combobox id="wa_combo_exec" name="wa_combo_exec" autocomplete="both" label="Template to execute">
+				<vwc-option id="simpletext" text="Simple text"></vwc-option>
+				{% for  key in all_templates %}
+					<vwc-option id={{key}} text={{key}}></vwc-option>
+				{% endfor %}
+			</vwc-combobox>
+
+			<div class="buttons">
+				<vwc-button type="submit" appearance="filled" label="Send message >" appearance="Update OR ave" ></vwc-button>
+				<vwc-button label="Reset" type="reset"></vwc-button>
+			</div>
+		</vwc-layout>
+
+		<div class="parent-textarea">
+			<textarea id="json_send" placeholder="Execution JSON template..." spellcheck="false" 
+					oninput="update(this.value, '#highlighting2-content'); sync_scroll(this, '#highlighting2');" 
+					onscroll="sync_scroll(this, '#highlighting2');" 
+					onkeydown="check_tab(this, event);">
+			</textarea>
+			<pre id="highlighting2" aria-hidden="true">
+				<code class="language-json" id="highlighting2-content"></code>
+			</pre>
+		</div>
+
+	</vwc-layout>
+
+	<vwc-divider role="presentation"></vwc-divider>
+		Web hookks logs
+	<vwc-divider role="presentation"></vwc-divider>
+
+	<vwc-layout gutters="small" row-spacing="small" column-basis="block">
+		<vwc-card elevation="3">
+			<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line">
+				<b>Webhook logs </b>
+				<div id="sms_logs"></div>
+			</vwc-layout>
+		</vwc-card>
+		<vwc-card elevation="3" auto-sizing="fill">
+			<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line" auto-sizing="fill">
+				<b>ELK logs </b>
+				<div id="elk_logs"></div>
+			</vwc-layout>
+		</vwc-card>
+
+	</vwc-layout>
+
+	<script>
+		// Listeners
+		$(document).ready(function(){
+    		$("#upload_application").submit(function(event){
+        		event.preventDefault(); // Prevent the form from submitting normally
+        
+				var formData = new FormData();
+				formData.append('file', $('#file_app_secret')[0].files[0]);
+			
+				$.ajax({
+					url: '/update_application',
+					type: 'POST',
+					data: formData,
+					processData: false,
+					contentType: false,
+					success: function(response) {
+						console.log("File uploaded successfully!");
+						// Handle the response from the server if needed
+					},
+					error: function(xhr, status, error) {
+						console.error("Error uploading file:", error);
+					}
+				});
+    		});
+		});
+
+		document.addEventListener('DOMContentLoaded', function () {
+			var all_templates = {{ all_templates | tojson | safe }};
+			var all_langs = {{ wa_lang | tojson | safe }}
+            var comboBox = document.getElementById('wa_combobox');
+            var textBox = document.getElementById('json_template');
+            var comboLang = document.getElementById('wa_lang');
+            var comboCategory= document.getElementById('wa_category');
+            var wa_status= document.getElementById('wa_status');
+			var wa_exec= document.getElementById('wa_combo_exec');
+			var text_box_exec = document.getElementById('json_send');
+			var send_from = document.getElementById('send_from');
+			var send_to = document.getElementById('send_to');
+
+            // Listen for the change event on the combobox
+            comboBox.addEventListener('change', function () {
+                // Update the value of the text box with the selected value
+                if (comboBox.value in all_templates) {
+					var template = all_templates[comboBox.value];
+					if (template && 'template' in template) {
+						var format_json = JSON.stringify( template['template'], null, 2);
+						format_json = format_json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+						// format_json = '<pre style="color: darkslategray; background-color: #f4f4f4; padding: 10px;">' + format_json + '</pre>';
+						textBox.value = format_json;
+						update(format_json, '#highlighting-content');
+					}
+					if (template && 'category' in template) {
+						comboCategory.value = template['category'];
+                	}
+                	if (template && 'lang' in template) {
+                		if (template['lang'] in all_langs) {
+                			comboLang.value = all_langs[ template['lang'] ];
+                		}
+						else {
+							comboLang.value = template['lang'];
+						}
+                	}
+
+                	if (template && 'status' in template) {
+                		wa_status.value = template['status'];
+                	}
+            	}
+            });
+
+			wa_exec.addEventListener('change', function () {
+				if (wa_exec.value in all_templates) {
+					console.log ("TAL 123", all_templates[wa_exec.value]);
+					var exec = all_templates[wa_exec.value];
+					if (exec && 'exec' in exec) {
+						console.log ("TAL 456", exec['exec']);
+						exec_template=exec['exec'] ;
+						if ("from" in exec_template) {
+							exec_template["from"] = send_from.value;
+						}
+						if ("to" in exec_template) {
+							exec_template["to"] = send_to.value;
+						} 
+						format_json = JSON.stringify(exec_template, null, 2);
+                		text_box_exec.value = format_json
+						update(format_json, '#highlighting2-content');
+                	}
+				}
+			});	
+
+        });
+		// Global functions
+
+		function list_to_lines (list_strings) {
+			if (typeof list_strings === 'string') {
+    			return `<span>${display_text(list_strings)}</span><br>`;
+			} else if (Array.isArray(list_strings) && list_strings.length > 0) {
+				const spans = list_strings.map(str => `<span>${display_text (str)}</span>`);
+				return spans.join('<br>');
+			}
+			else {
+				return "<span>Unknows Data... </span><br>";
+			}
+		}
+
+		conn = 'https://' + document.domain + ':' + location.port
+		var socket = io.connect(conn);
+
+        // Listen for 'sms_logs' events and append logs to the #logs div
+        socket.on('response_sms', function(data) {
+        	if ('error' in data) {
+        		const alert = document.getElementById('global_alert');
+        		if (!alert) {
+					const alert = document.createElement('vwc-banner')
+        			div_alert.appendChild( alert );
+        			alert.id = "global_alert";
+					alert.connotation="alert";
+					alert.text = data.error;
+					alert.removable="removable";
+        		}
+				else {
+					alert?.removeAttribute('hidden');
+					alert.text = data.error;
+				}
+			} else if ('data' in data) {
+				data = `<span>${data.data}</span>`
+				const data_parsed = list_to_lines(data.data);
+				document.getElementById('sms_logs').innerHTML += '<p>' + data + '</p>';
+				console.log('Data:', data);
+				// Process the data as needed
+			} else {
+				console.warn('No error or data keys found in the received JSON.');
+			}
+        });
+
+        // Example: Emit sms data
+        function emitSms() {
+            var data = {
+            	'api_key': document.getElementById('api_key').value,
+            	'api_sec': document.getElementById('api_sec').value,
+            	'send_from': document.getElementById('send_from').value,
+            	'send_to': document.getElementById('send_to').value,
+            	'msg': document.getElementById('msg').value,
+            	'is_sdk': document.getElementById('is_python_sdk').checked
+             };
+            socket.emit('submit_sms', data);
+        }
+
+		socket.on('response_elk', function(data) {
+			console.log ("-------- START ELK Response ------------");
+			console.log (data);
+			console.log ("-------- END ELK Response ------------");
+			document.getElementById('elk_logs').innerHTML = '<p>' + data + '</p>';
+        });
+		
+
+		function update(text, selector) {
+			let result_element = document.querySelector(selector);
+			// Handle final newlines (see article)
+			if(text[text.length-1] == "\n") { // If the last character is a newline character
+				text += " "; // Add a placeholder space character to the final line 
+			}
+			// Update code
+			result_element.innerHTML = text.replace(new RegExp("{", "g"), "{").replace(new RegExp("}", "g"), "}"); /* Global RegExp */
+			// Syntax Highlight
+			Prism.highlightElement(result_element);
+		}
+
+		function sync_scroll(element, selector) {
+			/* Scroll result to scroll coords of event - sync with textarea */
+			let result_element = document.querySelector(selector);
+			// Get and set x and y
+			result_element.scrollTop = element.scrollTop;
+			result_element.scrollLeft = element.scrollLeft;
+		}
+
+		function check_tab(element, event) {
+			let code = element.value;
+			if(event.key == "Tab") {
+				/* Tab key pressed */
+				event.preventDefault(); // stop normal
+				let before_tab = code.slice(0, element.selectionStart); // text before tab
+				let after_tab = code.slice(element.selectionEnd, element.value.length); // text after tab
+				let cursor_pos = element.selectionEnd + 1; // where cursor moves after tab - moving forward by 1 char to after tab
+				element.value = before_tab + "\t" + after_tab; // add tab char
+				// move cursor
+				element.selectionStart = cursor_pos;
+				element.selectionEnd = cursor_pos;
+				update(element.value); // Update text to include indent
+			}
+		}
+
+		/* OLD VERSION - TO DELETE
+        // Attach an event listener to the form to prevent the default submit action
+        document.getElementById('submitForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // Get form data
+            var username = document.getElementById('from').value;
+            var phone = document.getElementById('to').value;
+
+            // Emit a message to the server using SocketIO
+            socket.emit('submit_event', {'username': username, 'phone': phone});
+
+            // You can also emit to a specific client using 'room' argument
+            // socket.emit('submit_event', {'username': username, 'phone': phone, 'room': socket.id});
+
+            // Clear the form
+            this.reset();
+        });
+		*/
+
+    </script>
+{% endblock content %}

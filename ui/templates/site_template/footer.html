@@ -1,4 +1,10 @@
 <div class="pull-right">
   Johnny - Powered by  <a href="http://vonage.com">Vonage</a>
 </div>
-<div class="clearfix"></div>
+<div class=""></div>
+
+{% block javascripts %}
+  <script src="{{ asset.url_for('main.js') }}"></script>
+  <script type="text/javascript" charset="utf-8"></script>
+{% endblock %}
+

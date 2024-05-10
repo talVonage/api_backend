@@ -1,0 +1,115 @@
+{% extends "/site_template/base.html" %}
+
+{% block title %} Yoyo! {% endblock title %}
+
+{% block content %}
+<style>
+  table {
+    border-collapse: collapse; /* Collapse the borders to get solid lines */
+    width: 100%; /* Make the table take the full width of its container */
+  }
+  th, td {
+    text-align: center; /* Center-align text in header and data cells */
+    border: 1px solid black; /* Add a solid black border to cells */
+    padding: 8px; /* Add padding to the cells for better spacing */
+  }
+
+  /* Style for the internal table */
+  .internal-table {
+    border-collapse: collapse; /* Collapse the borders */
+  }
+  .internal-table td {
+    border: none; /* Remove borders from table cells */
+    padding: 0; /* Remove padding */
+  }
+</style>
+    <vwc-layout gutters="small" row-spacing="small" column-basis="block">
+        <vwc-card elevation="3"  >
+            <vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line">
+                {% for api_key in api_keys %}
+                    <b>Main API Key:  {{api_key}}</b>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sub Api Key</th>
+                                <th>Sub Api Name</th>
+                                <th>Sub Api Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in api_keys[api_key] %}
+                                <tr>
+                                    <td>{{ item[0] }}</td>
+                                    <td>{{ item[1] }}</td>
+                                    <td>{{ item[2] }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+            </vwc-layout>
+        </vwc-card>
+        <vwc-card elevation="3" auto-sizing="fill">
+            <vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line" auto-sizing="fill">
+                <b>Linked Numbers  </b>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MSISDN</th>
+                            <th>Country</th>
+                            <th>Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in numbers %}
+                            <tr>
+                                <td>{{ item[0] }}</td>
+                                <td>{{ item[1] }}</td>
+                                <td>{{ item[2]|join(', ')  }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+
+            </vwc-layout>
+        </vwc-card>
+        <vwc-card elevation="3" auto-sizing="fill">
+            <vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line" auto-sizing="fill">
+                <b>Applications  </b>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Application Name</th>
+                            <th>Application Key</th>
+                            <th>Application Capabilities</th>
+                            <th colspan="2">Application Numbers</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in apps %}
+                            <tr>
+                                <td>{{ item[0] }}</td>
+                                <td>{{ item[1] }}</td>
+                                <td>{{  item[3]|join(', ') }}</td>
+                                <td>  
+                                    <table class="internal-table">
+                                        {% for num in item[2] %}
+                                            <td>{{ num[0]  }}</td>
+                                            <td>{{ num[1]  }}</td>
+                                        {% endfor %}
+                                    </table>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+
+            </vwc-layout>
+        </vwc-card>
+
+    </vwc-layout>
+
+{% endblock content %}

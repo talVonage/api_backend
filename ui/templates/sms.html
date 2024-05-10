@@ -1,0 +1,135 @@
+{% extends "/site_template/base.html" %}
+
+{% block title %} SMS {% endblock title %}
+
+{% block content %}
+	{% for message in msg_list %}
+		<vwc-alert text="{{ message }}" placement="top" removable open></vwc-alert>
+    {% endfor %}
+
+	<form id="submitForm">
+		<vwc-layout gutters="small" column-spacing="medium">
+			<vwc-text-field required label="From:" id="send_from" placeholder="" type="tel" name="from" autocomplete="tel"
+							icon="phone-number-line" shape="pill"
+							char-count style="justify-self: flex-start;"></vwc-text-field>
+
+			<vwc-text-field required label="To:" id="send_to" placeholder="" type="tel" name="to" autocomplete="tel"
+							icon="phone-number-line" shape="pill"
+							char-count style="justify-self: flex-start;"></vwc-text-field>
+
+			<vwc-text-area label="Send SMS" id="msg" rows="4" name="msg" value="This is the text we want to see!"></vwc-text-area>
+
+			<div class="buttons">
+				<vwc-button label="Reset" type="reset"></vwc-button>
+				<vwc-button label="Submit" appearance="filled" onclick="emitSms()"></vwc-button>
+				<vwc-switch id="is_python_sdk" label="Use Python SDK"></vwc-switch>
+			</div>
+		</vwc-layout>
+
+		<vwc-layout gutters="small" row-spacing="small" column-basis="block">
+			<vwc-card elevation="3">
+				<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line">
+					<b>Webhook logs </b>
+					<div id="sms_logs"></div>
+				</vwc-layout>
+			</vwc-card>
+			<vwc-card elevation="3" auto-sizing="fill">
+				<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line" auto-sizing="fill">
+					<b>ELK logs </b>
+					<div id="elk_logs"></div>
+				</vwc-layout>
+			</vwc-card>
+
+		</vwc-layout>
+	</form>
+
+
+	<script>
+		// Global functions
+		
+		function list_to_lines (list_strings) {
+			if (typeof list_strings === 'string') {
+    			return `<span>${display_text(list_strings)}</span><br>`;
+			} else if (Array.isArray(list_strings) && list_strings.length > 0) {
+				const spans = list_strings.map(str => `<span>${display_text (str)}</span>`);
+				return spans.join('<br>');
+			}
+			else {
+				return "<span>Unknows Data... </span><br>";
+			}
+		}
+
+		conn = 'http://' + document.domain + ':' + location.port
+		var socket = io.connect(conn);
+
+        // Listen for 'sms_logs' events and append logs to the #logs div
+        socket.on('response_sms', function(data) {
+        	if ('error' in data) {
+        		const alert = document.getElementById('global_alert');
+        		if (!alert) {
+					const alert = document.createElement('vwc-banner') 
+        			div_alert.appendChild( alert );
+        			alert.id = "global_alert";
+					alert.connotation="alert";
+					alert.text = data.error;
+					alert.removable="removable";
+        		}
+				else {
+					alert?.removeAttribute('hidden');
+					alert.text = data.error;
+				}
+			} else if ('data' in data) {
+				data = `<span>${data.data}</span>`
+				const data_parsed = list_to_lines(data.data); 
+				document.getElementById('sms_logs').innerHTML += '<p>' + data + '</p>';
+				console.log('Data:', data);
+				// Process the data as needed
+			} else {
+				console.warn('No error or data keys found in the received JSON.');
+			}
+        });
+
+        // Example: Emit sms data
+        function emitSms() {
+            var data = {
+            	'api_key': document.getElementById('api_key').value,
+            	'api_sec': document.getElementById('api_sec').value,
+            	'send_from': document.getElementById('send_from').value,
+            	'send_to': document.getElementById('send_to').value,
+            	'msg': document.getElementById('msg').value,
+            	'is_sdk': document.getElementById('is_python_sdk').checked
+             };
+            socket.emit('submit_sms', data);
+        }
+
+		socket.on('response_elk', function(data) { 
+			console.log ("-------- START ELK Response ------------");
+			console.log (data);
+			console.log ("-------- END ELK Response ------------");
+			document.getElementById('elk_logs').innerHTML = '<p>' + data + '</p>';
+        });
+
+
+
+		/* OLD VERSION - TO DELETE
+        // Attach an event listener to the form to prevent the default submit action
+        document.getElementById('submitForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // Get form data
+            var username = document.getElementById('from').value;
+            var phone = document.getElementById('to').value;
+
+            // Emit a message to the server using SocketIO
+            socket.emit('submit_event', {'username': username, 'phone': phone});
+
+            // You can also emit to a specific client using 'room' argument
+            // socket.emit('submit_event', {'username': username, 'phone': phone, 'room': socket.id});
+
+            // Clear the form
+            this.reset();
+        });
+		*/
+
+    </script>
+{% endblock content %}
