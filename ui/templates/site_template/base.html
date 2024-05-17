@@ -56,11 +56,10 @@
       <vwc-layout gutters="small">
         <vwc-nav id="sideNav">
           <vwc-nav-item href="/" text="Home" icon="home-line" data-value="Home" onclick="onClick(this)"></vwc-nav-item>
-          <vwc-nav-item href="/sms" text="SMS" icon="chat-line" data-value="SMS" onclick="onClick(this)"></vwc-nav-item>
-          <vwc-nav-item href="/messages" text="Messages" icon="envelope-solid" data-value="Messages" onclick="onClick(this)"></vwc-nav-item>
-          <vwc-nav-item href="/verify" text="Verify" icon="check-call-line" data-value="Verify" onclick="onClick(this)"></vwc-nav-item>
-          <vwc-nav-item href="/voice" text="Voice" icon="voicemail-transcript-line" data-value="Voice" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/wa_templates" text="WhatsApp templates" icon="whatsapp-mono" data-value="Templates" onclick="onClick(this)"></vwc-nav-item>
           <vwc-nav-item href="/tech" text="WhatsApp tech" icon="whatsapp-mono" data-value="Tech" onclick="onClick(this)"></vwc-nav-item>
+          <vwc-nav-item href="/sms" text="SMS" icon="chat-line" data-value="SMS" onclick="onClick(this)"></vwc-nav-item>
+
         </vwc-nav>
       </vwc-layout>
 
@@ -70,11 +69,11 @@
         <vwc-layout gutters="small" column-basis="block">
           
           <div id="div_msg">
-            <vwc-alert id="global_msg" placement="top" headline="" text="" connotation="alert" removable close></vwc-alert>
+            <vwc-alert id="global_msg" name="global_msg" placement="top" headline="" text="" connotation="alert" removable close></vwc-alert>
           </div>
 
           <div id="div_alert">
-            <vwc-banner id="global_alert" text="ALERT! Something went wrong!" connotation="alert" hidden removable></vwc-banner>
+            <vwc-banner id="global_alert" name="global_alert" text="ALERT! Something went wrong!" connotation="alert" hidden removable></vwc-banner>
           </div>
           
           {% block content %}

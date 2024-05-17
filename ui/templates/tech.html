@@ -25,62 +25,71 @@
     Tech provider pre registered phone numbers
     <vwc-divider role="presentation"></vwc-divider>
 
+    <div style="display: flex; flex-direction: row; gap: 10px;">
+        <vwc-select id="select_country" label="country code" icon="flag-united-states" style="width: 150px;">
+            <vwc-option value="US" text="+1 " icon="flag-united-states"></vwc-option>
+            <vwc-option value="GB" text="+44" icon="flag-united-kingdom"></vwc-option>
+            <vwc-option value="IL" text="+972" icon="flag-israel"></vwc-option>
+        </vwc-select>
 
-    <vwc-layout gutters="small" row-spacing="small" column-basis="block">
-        <vwc-layout gutters="small" column-spacing="medium">
+        <vwc-combobox id="combo_wa_1" name="combo_wa_1" autocomplete="both" label="Check available numbers" style="width: 250px;">
+            {% for key in buy_numbers %}
+                <vwc-option id={{key}} text={{key}}></vwc-option>
+            {% endfor %}
+        </vwc-combobox>
 
-            <vwc-select id="select_country" label="country code" icon="flag-united-states">
-                <vwc-option value="US" text="+1 " icon="flag-united-states"></vwc-option>
-                <vwc-option value="GB" text="+44" icon="flag-united-kingdom"></vwc-option>
-                <vwc-option value="IL" text="+972" icon="flag-israel"></vwc-option>
-            </vwc-select>
-            <script>
+        <button id="btn_wa1"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Is numer is valid ? 
+        </button>
 
-            </script>
-
-            <vwc-combobox id="combo_buy_numbers" name="combo_reg" autocomplete="both" label="Buy numbers" style="width: 80%;">
-                <vwc-option id="simpletext" text="Simple text"></vwc-option>
-                {% for key in buy_numbers %}
-                    <vwc-option id={{key}} text={{key}}></vwc-option>
-                {% endfor %}
-            </vwc-combobox>
-
-            <vwc-combobox id="combo_api_numbers" name="combo_api_numbers" autocomplete="both" label="Account numbers" style="width: 80%;">
-                <vwc-option id="simpletext" text="Simple text"></vwc-option>
-                {% for key in all_numbers %}
-                    <vwc-option id={{key[0]}} text={{key[0]}}></vwc-option>
-                {% endfor %}
-            </vwc-combobox>
-            
-            <label id="label_reg">Ollal !!!</label>
-        </vwc-layout>
-        
-        <div class="buttons">
-            <button id="btn_reg"
-                    style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
-                Is numer is pre verfied ? 
-            </button> 
+        <div style="margin-top: 30px;">
+            <label  id="label_wa1" 
+                style="border: 0; border-radius: 4px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold;  padding: 0 24px;">
+                Number is valid 
+            </label>
         </div>
-    </vwc-layout>
+        
+    </div>
+
+    <div style="display: flex; flex-direction: row; gap: 10px;">
+        <vwc-combobox id="combo_wa_2" name="combo_wa_2" autocomplete="both" label="Existing Account Numbers" style="width: 410px;">
+            {% for key in all_numbers %}
+                <vwc-option id={{key[0]}} text={{key[0]}}></vwc-option>
+            {% endfor %}
+        </vwc-combobox>
+
+        <button id="btn_wa2"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Is number is valid ? 
+        </button>
+
+        <div style="margin-top: 30px;">
+            <label  id="label_wa2" 
+                style="border: 0; border-radius: 4px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold;  padding: 0 24px;">
+                Number is valid 
+            </label>
+        </div>
+    </div>
 
     
-    Tech provider embeded sign up  !!!
-    <button id="myButton"
-             style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
-         TEST TEST TEST
-     </button>
-
-
-     <button onclick="launchWhatsAppSignup()"
-             style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 0 24px;">
-         Sign up for WhatsApp
-     </button>
+    Embeded Sign Up
+    <vwc-divider role="presentation"></vwc-divider>
+    
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <button onclick="launchWhatsAppSignup()"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 10px 24px;">
+        Sign up for WhatsApp
+        </button>
+    </div>
+     
 
     <script>
+        // upload available number to purchase that can be validate as whatsapp numbers 
         const select = document.querySelector('vwc-select');
             select?.addEventListener('change', (e) => {
                 select.icon = select.selectedOptions[0].icon;
-                var combo = $("#combo_buy_numbers");
+                var combo = $("#combo_wa_1");
                 combo.empty();
                 $.ajax({
                     url: "/tech_reg_load_numbers",
@@ -90,8 +99,7 @@
                     success: function(response) {
                         console.log(response);
                          $.each(response, function(index, value) {
-                            console.log(value);
-                             combo.append("<vwc-option text=" + value + "></vwc-option>");
+                            combo.append("<vwc-option text=" + value + "></vwc-option>");
                          });
                     },
                     error: function(xhr, status, error) {
@@ -101,27 +109,39 @@
             });
 
         $(document).ready(function(){
-            $("#btn_reg").click(function(){
-                var phone_num = $("#combo_reg").val();
-                console.log ("Checking number "+phone_num)
-
-
+            function makeAjaxCall(phone_num, lbl) {
                 $.ajax({
-                    url: "/tech_reg_validate_number", 
+                    url: "/tech_reg_validate_number",
                     type: "POST",
-                    data: JSON.stringify({data: phone_num}), // Change the message content as needed
-                    contentType: "application/json",
+                    data: phone_num,
+                    contentType: 'text/plain',
                     success: function(response) {
-                        console.log("Message sent successfully!");
-                        console.log(response);
-                        $("#label_reg").text(response); 
-                        // You can handle the response from the server here
+                        console.log("Success:", response);
+                        lbl.text(response); 
+                        // Handle the success response here
                     },
                     error: function(xhr, status, error) {
-                        console.error("Error sending message:", error);
+                        console.log("Error:", error);
+                        // Handle the error response here
                     }
                 });
+            }
+
+            $("#btn_wa1").click(function(){
+                var phone_num = $("#combo_wa_1").val();
+                var lbl = $("#label_wa1")
+                console.log ("Checking number "+phone_num)
+                makeAjaxCall(phone_num, lbl)        
             });
+
+            $("#btn_wa2").click(function(){
+                var phone_num = $("#combo_wa_2").val();
+                var lbl = $("#label_wa2")
+                console.log ("Checking number "+phone_num)
+                makeAjaxCall(phone_num, lbl)        
+            });
+            
+
 
             $("#myButton").click(function(){
                 var c_name = $("#company_name").val();

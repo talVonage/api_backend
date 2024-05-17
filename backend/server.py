@@ -24,13 +24,25 @@ env.policies['json.dumps_kwargs'] = {'sort_keys': False}
 
 app = Flask(__name__, template_folder="../ui/templates", static_folder="../ui/static")
 Asset(app)
-von_api = Backend_Ui_Api()
 
 socketio = SocketIO(app, async_mode=None)
 thread = None
 thread_lock = Lock()
 thread_event = Event()
 
+""" Global variables """
+von_api = Backend_Ui_Api()
+
+def connect_api (key=None, secret=None):
+    msg_conn = "Not Connected To Vonage API"
+    _is_conn = False
+    if key and len(key)>0 and secret and len(secret)>0:
+        von_api.connect_api(api_key=key, api_secret=secret)
+
+    if von_api.is_api_connect:
+        msg_conn = f"Connected To Vonage, API Key:{von_api.application_id}"
+        _is_conn = True
+    return _is_conn, msg_conn
 
 """ Application routes  """
 @app.get('/_/health')
@@ -39,12 +51,7 @@ async def health():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    is_connected = False
-    msg_conn = "Not Connected To Vonage API"
-    von_api.connect()
-    if von_api.is_connect():
-        is_connected = True
-        msg_conn = "Connected To Vonage API"
+    is_connected, msg_conn = connect_api (key=None, secret=None)
     api_keys = von_api.subapi
     phone_numbers = von_api.all_numbers
     apps = von_api.apps
@@ -61,22 +68,13 @@ def index():
 """ Submit api key and secret """
 @app.route('/submit_api', methods=['POST'])
 def submit_api():
-    is_connected = False
-    msg_conn = "Not Connected To Vonage API"
     api_key     = request.form.get('api_key')
     api_secret  = request.form.get('api_sec')
+    is_connected, msg_conn = connect_api(key=api_key, secret=api_secret)
+    api_keys = von_api.subapi
+    phone_numbers = von_api.all_numbers
+    apps = von_api.apps
 
-    if api_key and api_secret:
-        von_api.connect(api_key=api_key, api_secret=api_secret)
-        if von_api.is_connect():
-            is_connected = True
-            msg_conn = "Connected To Vonage API"
-
-        api_keys = von_api.subapi
-        phone_numbers = von_api.all_numbers
-        apps = von_api.apps
-    else:
-        api_keys, phone_numbers = {}, {}
 
     return render_template('main.html',
                            msg_dict={},
@@ -99,24 +97,75 @@ def verify():
 def voice():
     return render_template('voice.html')
 
-@app.route('/messages')
-def messages():
-    is_connected = False
-    msg_conn = "Not Connected To Any Vonage Application"
+@app.route('/wa_templates')
+def wa_templates():
+    api_key = request.form.get('api_key')
+    api_secret = request.form.get('api_sec')
+    is_connected, msg_conn = connect_api(key=api_key, secret=api_secret)
+    all_templates, all_ex_account = {}, []
 
-    if von_api.is_connect_application():
-        is_connected = True
-        msg_conn = f"Connected To Vonage App {von_api.application_id}"
-        all_templates = von_api.wa_get_templates()
-        all_apps = von_api.apps_by_capabilites(capability="messages")
 
-    return render_template('messages.html', all_templates=all_templates,
+    if is_connected:
+        all_templates = von_api.wa_templates_get()
+        all_ex_account = von_api.get_external_account (provider="whatsapp")
+
+    return render_template('wa_template.html', all_templates=all_templates,
                            wa_categories=von_api.WA_CATEGORIES,
                            wa_lang=von_api.WA_LANGUAGES,
                            msg_dict={},
-                           all_apps=all_apps,
+                           all_ex_account=all_ex_account,
                            is_connected=is_connected,
                            msg_conn=msg_conn)
+
+@app.route('/submit_waba', methods=['POST'])
+def submit_waba():
+    is_connected, msg_conn = connect_api()
+    waba_id       = request.form.get('wa_waba')
+    if waba_id and len(waba_id)>0:
+        von_api.waba_id = waba_id
+        msg = {von_api.RESPONSE_SUCCESS:f"Using WABA ID {waba_id}"}
+    else:
+        msg = {von_api.RESPONSE_FAILED: f"Failed to upload  WABA ID "}
+    all_templates, all_ex_account = {}, []
+
+    if von_api.is_api_connect:
+        all_templates = von_api.wa_templates_get()
+        all_ex_account= von_api.get_external_account(provider="whatsapp")
+
+    return render_template('wa_template.html', all_templates=all_templates,
+                           wa_categories=von_api.WA_CATEGORIES,
+                           wa_lang=von_api.WA_LANGUAGES,
+                           msg_dict=msg,
+                           all_ex_account=all_ex_account,
+                           is_connected=is_connected,
+                           msg_conn=msg_conn)
+
+
+
+    return {von_api.RESPONSE_SUCCESS: f"{str(waba_id)}\n\n Hello world! "}
+
+    #render_template('messages.html',
+    #                       all_templates=[],
+    #                       wa_categories=von_api.WA_CATEGORIES,
+    #                       wa_lang=von_api.WA_LANGUAGES,
+    #                       msg_dict={von_api.RESPONSE_SUCCESS: f"<span>{str(waba_id)}<span><br>"})
+
+@app.route('/submit_wa', methods=['POST'])
+def submit_wa():
+    selected_name       = request.form.get('wa_combobox')
+    selected_component  = request.form.get('json_template')
+    selected_lang       = request.form.get('wa_lang')
+    selected_category   = request.form.get('wa_category')
+
+    res = von_api.wa_update_template(name=selected_name, component=selected_component)
+    print (res)
+
+    all_templates = von_api.wa_get_templates()
+
+    return render_template('wa_template.html', all_templates=all_templates,
+                           wa_categories=von_api.WA_CATEGORIES,
+                           wa_lang=von_api.WA_LANGUAGES,
+                           msg_dict=res)
 
 @app.route('/tech')
 def tech():
@@ -126,11 +175,9 @@ def tech():
 
 @app.route('/tech_reg_validate_number', methods=['POST'])
 def tech_reg_number ():
-    data = request.get_json()
-    res = data.get('data')
-    print (f"Got number {res}")
-
-    return "Ohhhh my god !!!"  # "#render_template('voice.html', msg_dict=msg)
+    num = request.data.decode('utf-8')
+    res = von_api.wa_embeded_valid_number(number=num)
+    return res
 
 @app.route('/tech_reg_load_numbers', methods=['POST'])
 def tech_reg_load_numbers ():
@@ -176,6 +223,8 @@ def update_application ():
     else:
         return "No file uploaded!"
 
+
+
 """ WEBHOOKS VONAGE API"""
 @app.route('/webhooks/delivery', methods=['POST'])
 def sms_delivery():
@@ -193,24 +242,6 @@ def sms_inbound():
     socketio.emit('response_sms', f"SMS INBOUND >>>>  {str(data)} ")
     return ("message_status", 200)
 
-@app.route('/submit_wa', methods=['POST'])
-def submit_wa():
-    selected_name       = request.form.get('wa_combobox')
-    selected_component  = request.form.get('json_template')
-    selected_lang       = request.form.get('wa_lang')
-    selected_category   = request.form.get('wa_category')
-
-    res = von_api.wa_update_template(name=selected_name, component=selected_component)
-    print (res)
-
-    all_templates = von_api.wa_get_templates()
-
-    return render_template('messages.html', all_templates=all_templates,
-                           wa_categories=von_api.WA_CATEGORIES,
-                           wa_lang=von_api.WA_LANGUAGES,
-                           msg_dict=res)
-
-
 
 """ Sockets / Real time events"""
 @socketio.on('submit_sms')
@@ -223,9 +254,9 @@ def handle_submit(data):
     is_sdk= data.get('is_sdk')
 
     if is_sdk:
-        resp = von_api.send_sms_sdk(send_from=send_from, send_to=send_to, msg=msg)
+        resp = von_api.sms_send_sdk(send_from=send_from, send_to=send_to, msg=msg)
     else:
-        resp = von_api.send_sms_restapi(send_from=send_from, send_to=send_to, msg=msg)
+        resp = von_api.sms_send_restapi(send_from=send_from, send_to=send_to, msg=msg)
 
     logging.info (f"SEND SMS RESPONSE: {resp}")
 
@@ -242,7 +273,6 @@ def handle_submit(data):
 
     # You can also emit to a specific client using 'room' argument
     # socketio.emit('log', f"Form submitted - Username: {username}, Phone: {phone}", room=request.sid)
-
 
 """" OLD VERSION !!!!  
 @app.route('/sms_send', methods=['POST'])
@@ -286,7 +316,7 @@ def elk_thread(api_key, msg_id, event, max_seconds=60 ):
             count += 1
             current_seconds = time.time() - current_ts
             msg_start = f"<span>{count}: Listen {round(current_seconds)} out of {max_seconds} seconds to ELK logs </span>"
-            df = elk.get_by_api_key_and_id(api_key=api_key, msg_id=msg_id)
+            df = elk.query_voange_match_api_and_id(api_key=api_key, msg_id=msg_id)
             log = f"{msg_start} <br> {df.to_html(index=False)}"
             socketio.emit('response_elk', log)
 
@@ -303,8 +333,8 @@ def elk_thread(api_key, msg_id, event, max_seconds=60 ):
 
 if __name__ == '__main__':
     port = int(os.getenv('VCR_PORT', 443))
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir= os.path.dirname(os.path.abspath(__file__))
     cert_path = os.path.join(current_dir, 'certs', 'cert.pem')
     key_path  = os.path.join(current_dir, 'certs', 'key.pem')
 
-    socketio.run(app,host="0.0.0.0", port=port, allow_unsafe_werkzeug=True, ssl_context=(cert_path, key_path) ) # , ssl_context='adhoc'
+    socketio.run(app,host="0.0.0.0", port=port, allow_unsafe_werkzeug=True) #  ssl_context=(cert_path, key_path), ssl_context='adhoc'

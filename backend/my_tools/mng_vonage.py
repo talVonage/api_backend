@@ -1,13 +1,11 @@
-import json
+import json, os
 from datetime import datetime
-
 import vonage
 import logging
-from pprint import pformat
 from collections import OrderedDict
 
 from mng_restApi import Rest_Api
-from globals import create_jwt
+from globals import create_jwt, create_base64
 
 logger = logging.getLogger(__name__)
 class Vonage ():
@@ -35,10 +33,13 @@ class Vonage ():
     TYPE_CUSTOM     = "custom"
 
     def __init__ (self, key=None, secret=None, app_id=None, app_secret=None, waba_id=None):
-        self._api_key, self._api_secret, self._app_id, self._app_secret, self._waba_id = None,None,None,None,None
+        self._api_key, self._api_secret, self._app_id, self._app_secret = None,None,None,None
+        self._waba_id   = waba_id
         self._vonage    = None              # Vonage APIs object
         self._vonage_app= None              # Vonage application
         self._is_ok     = None              # Boolean checking request validation
+        self._is_api_connected = False
+        self._is_app_connected = False
         self._response = {}                 # Response dictionary {'data':"...", 'error':"....",'method':"..."
         self._wa_all_templates      = None  # Existing whatsapp templates
         self._verify_request_id     = None  # USED FOR VERIFY RESPONSE (Is Verified )
@@ -46,45 +47,101 @@ class Vonage ():
         self._print_method_str      = None  # List of string descibe the use method (for nice printing )
 
         self._all_apps, self._all_subapi, self._all_numbers, self._vonage_app = {}, {}, {}, {}
-        self.connect(key=key, secret=secret, app_id=app_id, app_secret=app_secret, waba_id=waba_id)
+        self.connect_api(key=key, secret=secret)
+        self.connect_app(app_id=app_id, app_secret = app_secret)
 
-    def connect (self, key, secret, app_id=None, app_secret=None, waba_id=None):
-        self._api_key = key if key and len(key)>0 else self._api_key
-        self._api_secret = secret if secret and len(secret)>0 else self._api_secret
-        self._app_id = app_id if app_id and len(app_id)>0 else self._app_id
-        self._app_secret = app_secret if app_secret and len(app_secret)>0 else self._app_secret
-        self._waba_id = waba_id if waba_id and len(waba_id)>0 else self._waba_id
-        self._vonage = self.set_api_obj(api_key=self._api_key, api_secret=self._api_secret)
 
-        if self.is_connect():
-            logger.info ("Connected successfully !!")
-            self._all_apps = self._get_vonage_apps_cdk()
-            self._all_subapi = self._get_vonage_subapis_cdk()
-            self._all_numbers = self._get_vonage_numbers_cdk()
-            self._vonage_app = self.set_app_obj(app_id=self._app_id, app_secret=self._app_secret)
+    """ ALL PROPERTIES """
+    @property
+    def all_apps (self):
+        return self._all_apps
 
-    def is_connect (self):
-        if not self._vonage:
-            logger.error (f"Could not connect to Vonage API")
+    @property
+    def all_subapis (self):
+        return self._all_subapi
+
+    @property
+    def all_numbers(self):
+        return self._all_numbers
+
+    @property
+    def application_id(self):
+        return self._app_id
+
+    @property
+    def waba_id(self):
+        return self._waba_id
+
+    @waba_id.setter
+    def waba_id(self, value):
+        self._waba_id = value if value and len(str(value))>0 else None
+
+    @property
+    def is_api_connected (self):
+        return self._is_api_connected
+
+    @property
+    def is_app_connected(self):
+        return self._is_app_connected
+
+    def connect_api (self, key=None, secret=None):
+        if key and len(key)>0 and secret and len(secret)>0:
+            self._vonage = vonage.Client(key=key, secret=secret)
+            _balance = self.get_balance ()
+            if _balance:
+                self._api_key = key
+                self._api_secret = secret
+                self._api_bearer = create_base64(key=self._api_key, secret=self._api_secret)
+                self._api_bearer = f"Basic {self._api_bearer.decode('utf-8')}" if self._api_bearer and len(self._api_bearer)>0 else None
+                self._is_api_connected = True
+                self._all_apps = self._get_vonage_apps_cdk()
+                self._all_subapi = self._get_vonage_subapis_cdk()
+                self._all_numbers = self._get_vonage_numbers_cdk()
+                logger.info(f"Vonage SDK is connected successfully, Current balance: {_balance}")
+                return self._vonage
+
+    def connect_app(self, app_id=None, app_secret=None):
+        if app_id and len(app_id) > 0 and app_secret and len(app_secret) > 0:
+            self._vonage_app = vonage.Client(application_id=app_id, private_key=app_secret)
+            _balance = self.get_balance_by_app()
+            if _balance:
+                self._is_app_connected = True
+                self._app_id = app_id
+                self._app_secret = app_secret
+                logger.info(f"Vonage APPLICATION is connected successfully, Current balance: {_balance}")
+                return self._vonage_app
+
+    def is_waba_exists (self, waba_id=None):
+        _waba_id = waba_id if waba_id and len(waba_id)>0 else self._waba_id
+        if not _waba_id or len(str(_waba_id))<1:
+            logger.error(f"MUST PROVIDE WABA ID ! ")
             return False
+
+        self.waba_id = _waba_id
         return True
 
-    def is_coonect_aaplication (self):
-        if not self._app_secret or not self._app_id:
-            return False
+    def get_balance (self):
         if not self._vonage:
-            logger.error (f"Could not connect to Vonage API")
-            return False
-        return True
+            return
+        try:
+            _balance = self._vonage.account.get_balance()
+            print(f"Account balance is: {_balance}")
+            return _balance
+        except:
+            return None
 
-    def get_balance_cdk (self):
-        if not self.is_connect(): return
-        _balance = self._vonage.account.get_balance()
-        print(f"Account balance is: {_balance}")
-        return _balance
+    def get_balance_by_app (self):
+        if not self._vonage_app:
+            return
+        try:
+            _balance = self._vonage_app.account.get_balance()
+            print(f"Account balance is: {_balance}")
+            return _balance
+        except:
+            return None
 
     def get_number_to_buy (self, country):
-        if not self.is_connect(): return
+        if not self.is_api_connected: return
         _ret = []
         try:
             _res = self._vonage.numbers.get_available_numbers(country)
@@ -96,31 +153,15 @@ class Vonage ():
             logger.error(e)
         return _ret
 
-    def set_api_obj(self, api_key, api_secret):
-        self._api_key   = api_key if api_key else self._api_key
-        self._api_secret= api_secret if api_secret else self._api_secret
-
-        if self._api_key and self._api_secret:
-            self._vonage = vonage.Client(key=self._api_key, secret=self._api_secret)
-        return self._vonage
-
-    def set_app_obj(self, app_id, app_secret):
-        self._app_id = app_id if app_id is not None else self._app_id
-        self._app_secret = app_secret if app_secret is None else self._app_secret
-        self._vonage_app = None
-
-        if self._app_id and self._app_secret:
-            self._vonage_app = vonage.Client(application_id=self._app_id, private_key=self._app_secret)
-        return self._vonage_app
-
-
-    def set_waba(self, waba_id):
-        self._waba_id = waba_id if waba_id is not None else self._waba_id
-        return self._waba_id
-
-    def send_sms_restapi (self, props,  **args):
+    def sms_send_restapi (self, props,  **args):
         url = 'https://rest.nexmo.com/sms/json'
         props_must = ["from", "text", "to", "api_key", "api_secret"]
+        if not args.get("api_key") or len(args.get("api_key"))<1:
+            args["api_key"] = self._api_key
+
+        if not args.get("api_secret") or len(args.get("api_secret"))<1:
+            args["api_secret"] = self._api_secret
+
         _props = self._validate_props(props_dict=props, props_must=props_must, props_additional=None, **args)
         if not _props:
             return
@@ -137,7 +178,7 @@ class Vonage ():
         self._set_response(self.METHOD_API.copy(), self.RESPONSE_METHOD)
         self._set_response(f"USING URL {url}, data: {_props}", self.RESPONSE_METHOD)
 
-    def send_sms_sdk (self, props=None, props_valid=None,  **args):
+    def sms_send_sdk (self, props=None, props_valid=None,  **args):
         self._is_ok = False
         props_must = ['from','to','text']
 
@@ -157,7 +198,7 @@ class Vonage ():
         self._set_response(f"Methods Properties : {str(_props)}", self.RESPONSE_METHOD)
         self._set_response(f"vonage.sms.send_message({str(_props)})", self.RESPONSE_METHOD)
 
-    def send_messages_sdk (self, props=None, props_valid=None,app_id=None, app_secret=None,  **args):
+    def messages_send_sdk (self, props=None, props_valid=None,app_id=None, app_secret=None,  **args):
         self._is_ok = False
         props_must = ['channel', 'message_type', 'to', 'from']
         _props = self._validate_props(props_dict=props, props_must=props_must, props_additional=props_valid, **args)
@@ -179,7 +220,7 @@ class Vonage ():
         self._method.append(f"vonage.messages.send_message({str(_props)})")
         return _res
 
-    def extract_massage_id(self, res, msg_id="message-id", node_name='messages', msg_error='error-text'):
+    def massage_extract_id(self, res, msg_id="message-id", node_name='messages', msg_error='error-text'):
         m_id = None
         logger.info(f"extract_massage_id ::: PARSE RESPONSE: {res}")
         messages = res.get(node_name) if node_name else res
@@ -196,39 +237,39 @@ class Vonage ():
             self._set_response(res, self.RESPONSE_FAILED)
         return m_id
 
-    def wa_get_templates(self, app_id=None, app_secret=None, waba_id=None, update=True, json_templates=None):
-        self._is_ok = False
-        _app_id = app_id if app_id else self._app_id
-        _app_secret = app_secret if app_secret else self._app_secret
-        _waba_id = waba_id if waba_id else self._waba_id
+    def wa_templates_get (self, waba_id=None, update=True, wa_templates=None):
+        if not self._is_api_connected or not self._api_bearer:
+            logger.error (f"wa_templates_get:-> Not connected to Vonage API")
+            return
+
 
         if not update and self._wa_all_templates is not None:
             return self._wa_all_templates
 
-        if not _waba_id:
-            logger.error (f"MUST PROVIDE WABA ! ")
+        if not self.is_waba_exists(waba_id=waba_id):
+            logger.error(f"wa_templates_get:-> WABA not exists ")
             return
 
+        self._is_ok = False
         self._wa_all_templates = OrderedDict({})
 
-        url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{_waba_id}/templates"
-        if not json_templates:
+        url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{self.waba_id}/templates"
+        if wa_templates is None :
             try:
                 self._method = self.METHOD_API.copy()
                 self._method.append(f"USING CURL: {url}")
 
                 _url_template = Rest_Api(url=url)
-                token = create_jwt(app_id=_app_id, app_secret_file=_app_secret, app_secret_str=None, expires_hours=None)
-                _url_template.set_header('Authorization', token)
-                json_templates = _url_template.get()
-                logger.info (f"WA templates: {json_templates}")
+                _url_template.set_header('Authorization', self._api_bearer)
+                wa_templates = _url_template.get()
+                logger.info (f"WA templates: {wa_templates}")
                 self._is_ok = True
 
             except Exception as err:
                 self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
                 return
 
-        templates_list = json_templates.get("templates")
+        templates_list = wa_templates.get("templates")
 
         if templates_list and len( templates_list ) > 0:
             for template in templates_list:
@@ -238,7 +279,7 @@ class Vonage ():
                 _t_id = template.get("id")
                 _t_category = template.get("category")
                 _t_status = template.get("status")
-                _t_exec = self.wa_exec_template(template, send_from="", send_to="")
+                _t_exec = self.wa_template_exec_(template, send_from="", send_to="")
 
                 if _t_name and _t_id:
                     self._wa_all_templates[_t_name] = {"template": template,
@@ -246,8 +287,7 @@ class Vonage ():
                                                   "exec": _t_exec}
         return self._wa_all_templates
 
-    """ SET Template """
-    def wa_exec_template(self, template, send_from, send_to):
+    def wa_template_exec_(self, template, send_from, send_to):
         _props = OrderedDict({
             "from": send_from,
             "to": send_to,
@@ -309,11 +349,9 @@ class Vonage ():
 
         return _props
 
-    def wa_update_template (self,existing_names, name,component, app_id=None, app_secret=None, waba_id=None):
-        response= {}
-        _app_id = app_id if app_id else self._app_id
-        _app_secret = app_secret if app_secret else self._app_secret
-        _waba_id = waba_id if waba_id else self._waba_id
+    def wa_template_update (self,existing_names, name,component, waba_id=None):
+        if not self._is_api_connected or not self._api_bearer: return
+        if not self.is_waba_exists(waba_id): return
 
         all_names = []
         if existing_names and len(existing_names)>0:
@@ -329,10 +367,9 @@ class Vonage ():
                 return response
             else:
                 try:
-                    url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{_waba_id}/templates/{_t_id}"
+                    url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{self.waba_id}/templates/{_t_id}"
                     _url_template = Rest_Api(url=url)
-                    token = create_jwt(app_id=_app_id, app_secret_file=_app_secret, app_secret_str=None, expires_hours=None)
-                    _url_template.set_header('Authorization', token)
+                    _url_template.set_header('Authorization', self._api_bearer)
                     resp = _url_template.put(data=component)
                     response={self.RESPONSE_SUCCESS:resp}
                     logger.info(f"WA create template response: {resp}")
@@ -341,16 +378,14 @@ class Vonage ():
 
         # Create new template
         else:
-            url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{_waba_id}/templates"
+            url = f"https://api.nexmo.com/v2/whatsapp-manager/wabas/{self.waba_id}/templates"
             component['name'] = name
             component.pop("id", None)       # Remove ID
             component.pop("status", None)   # Remove ID
             try:
 
                 _url_template = Rest_Api(url=url)
-                token = create_jwt(app_id=_app_id, app_secret_file=_app_secret, app_secret_str=None, expires_hours=None)
-                _url_template.set_header('Authorization', token)
-
+                _url_template.set_header('Authorization', self._api_bearer)
                 resp = _url_template.post(data=component)
                 response = {self.RESPONSE_SUCCESS: resp}
                 logger.info (f"WA create template response: {resp}")
@@ -358,6 +393,29 @@ class Vonage ():
                 response = {self.RESPONSE_FAILED: f"Error creating WA templates: {err}"}
 
         return response
+
+    def wa_embeded_valid_number (self, number, auth, business_id, version="v19.0"):
+        ret = "No Data"
+        if number and len(number)>0 and auth:
+            url = f"https://graph.facebook.com/{version}/{business_id}/add_phone_numbers?phone_number={number}"
+
+            try:
+                self._method = self.METHOD_API.copy()
+                self._method.append(f"USING CURL: {url}")
+
+                _url_add_numbers = Rest_Api(url=url)
+                _url_add_numbers.set_header('Authorization', auth)
+                msg = _url_add_numbers.post()
+                if "error" in msg:
+                    err_msg = msg["error"].get("message")
+                    if "you do not have permission to access this endpoint" in err_msg.lower():
+                        ret = f"Number {number} can be used as whatsapp number"
+                    else:
+                        ret =  f"Number {number} is not valid for whatsapp"
+            except Exception as err:
+                self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
+        print (ret)
+        return ret
 
     def get_response(self, msg_init=None):
         ret = {}
@@ -373,7 +431,48 @@ class Vonage ():
         self._response = {}
         return ret
 
-    """ INTERNAL HELP FUNCTIONS """
+    def external_accounts_get (self, provider=None):
+        ret = []
+        if not self._is_api_connected or not self._api_bearer:
+            logger.error (f"wa_templates_get:-> Not connected to Vonage API")
+            return
+
+        url = f"https://api.nexmo.com/beta/chatapp-accounts/"
+        try:
+            self._method = self.METHOD_API.copy()
+            self._method.append(f"USING CURL: {url}")
+
+            _url_template = Rest_Api(url=url)
+            _url_template.set_header('Authorization', self._api_bearer)
+            _ex_accounts = _url_template.get()
+            _ex_accounts =_ex_accounts.get("_embedded")
+
+            if _ex_accounts and len(_ex_accounts)>0:
+                for acc in _ex_accounts:
+                    if provider and len(provider)>0:
+                        if acc.get("provider","None").lower() == provider.lower():
+                            ret.append (acc)
+                    else:
+                        ret.append(acc)
+
+        except Exception as err:
+            self._set_response(f"Error loading external accounts: {err}", self.RESPONSE_FAILED)
+
+        logger.info (f"External accounts: {ret}")
+        return ret
+
+
+
+    """ INTERNAL HELP FUNCTIONS - PRIVATE METHODS """
+    def _get_app_jwt (self, app_id=None, app_secret=None):
+        _app_id = app_id if app_id and len(app_id)>0 else self._app_id
+        _app_secret = app_secret if app_secret and len(app_secret)>0 else self._app_secret
+
+        if _app_id and _app_secret:
+            return  create_jwt(app_id=_app_id, app_secret_file=_app_secret, app_secret_str=None, expires_hours=None)
+        else:
+            logger.error (f"Failed to create JWT token for app { _app_id }")
+
     def _validate_props (self, props_dict, props_must=None,props_additional=None, **args):
         _props_dict = props_dict if props_dict else {}
         if args:
@@ -445,26 +544,8 @@ class Vonage ():
         else:
             self._response[msg_type] += f"{str(msg)} \n" if msg_type == self.RESPONSE_FAILED else f"<span>{str(msg)}<span><br>"
 
-    """ PROPERTIES """
-    @property
-    def all_apps (self):
-        return self._all_apps
-
-    @property
-    def all_subapis (self):
-        return self._all_subapi
-
-    @property
-    def all_numbers(self):
-        return self._all_numbers
-
-    @property
-    def application_id(self):
-        return self._app_id
-
-    """PRIVATE METHODS  """
     def _get_vonage_apps_cdk(self, max_phones=100):
-        if not self.is_connect(): return
+        if not self.is_api_connected: return
         _ret = None
         try:
             _all_apps = self._vonage.application.list_applications()["_embedded"]["applications"]
@@ -506,7 +587,7 @@ class Vonage ():
         return _ret
 
     def _get_vonage_subapis_cdk(self):
-        if not self.is_connect(): return
+        if not self.is_api_connected: return
         _api_dict = None
         _ret = {}
         try:
@@ -545,7 +626,7 @@ class Vonage ():
         return _ret
 
     def _get_vonage_numbers_cdk (self):
-        if not self.is_connect(): return []
+        if not self.is_api_connected: return []
         _ret = []
         try:
             _res = self._vonage.numbers.get_account_numbers()
@@ -568,6 +649,7 @@ class Vonage ():
                     num_feature = number.get("features")
                     ret.append([num_msisdn, num_country, num_feature])
         return ret
+
     """"   OLD VERSION :::: --------------------------------------------------------------------"""
 
     def send_fb_msg (self, to, sender, msg):
@@ -636,7 +718,8 @@ class Vonage ():
             logger.error(error)
         return False
 
-    def ncco_ask_me_call (self, uuid):
+    def voice_ncco_ask_me_call (self, uuid):
+        DOMAIN_URL = ""
         return [
             {"action": "talk", "text": "How can I help ?", },
             {
@@ -653,7 +736,8 @@ class Vonage ():
             {"action": "talk", "text": "Good bye"},
         ]
 
-    def ncco_record (self):
+    def voice_ncco_record (self):
+        DOMAIN_URL = ""
         return  [
             {
                 "action": "talk",
@@ -682,72 +766,5 @@ class Vonage ():
                 ]
             }
         ]
-
-
-TO_NUMBER='447754351600'  #  support@api.vonage.com
-WHATSAPP_NUMBER='14157386102'
-WHATSAPP_TEMPLATE_NAMESPACE='ccccc'
-WHATSAPP_TEMPLATE_NAME='xxzxz'
-
-def test_1 ():
-    logging.basicConfig(level=logging.INFO)
-    from pprint import pprint
-    v = Vonage (key=None, secret=None,    #key='292e6c87', secret='e2IN2xM3Amwx0Ktg',
-                app_id="bd240d61-98fd-4379-9850-aec8ecd867aa",
-                app_secret="/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key")
-    #v.get_balance()
-    #pprint (v.all_apps)
-    #pprint (v.all_subapis)
-    #v.get_numbers
-
-    r = v.get_number_to_buy (country="IL")
-    v.connect(key='292e6c87', secret='e2IN2xM3Amwx0Ktg')
-    r = v.get_number_to_buy(country="IL")
-
-
-def test_2 ():
-    props = {
-        "channel": "whatsapp",
-        "message_type": "template",
-        "to": '447754351600',
-        "from": "447520691600",  # "447520691600", # 14157386102
-        # "text" : "How you doing today !"
-        "template": {
-            "name": "test_tal:test_tal",  # :{WHATSAPP_TEMPLATE_NAME}
-            "parameters": [
-                "Tal",
-            ],
-        },
-        "whatsapp": {"policy": "deterministic", "locale": "en"},
-    }
-
-    #v.api_messages_send_wa_template(send_from="447520691600", send_to="447754351600",
-    #                                template_name="test_tal:test_tal", template_params=["moshe",], locale="en",
-    #                                app_id=None, app_secret=None)
-
-    # "447520691600"
-    #v.api_messages_send_wa (type=v.TYPE_TEMPLATE, send_from="447520635100", send_to="447754351600",
-    #                                   text=None, url=None, caption=None, file_name=None,
-    #                                   template_name="test_tal:test_tal", template_params=["Gohn",], custom=None,
-    #                                   locale='en',
-    #                                   client_ref=None, webhook_url=None, webhook_version=None,
-    #                                   app_id=None, app_secret=None)
-
-    url =  "https://storage.googleapis.com/picup-server-sdk-v2-campaigns-images/610/600"
-
-    #rr = v.send_message(channel='whatsapp',   send_from="447520691600", send_to='447754351600',
-    #               msg="Hallo world!", msg_type='text')
-    #print (rr)
-
-    #res = v.varify2_start(phone_number='447754351600', brand='yoyo')
-    ##print (res)
-    #res = v.varify2_test (request_id='54df0364-7c8d-4586-b85b-f96fbbd6e45c', code='6281')
-    #print(res)
-    # ret = v.varify2_cancle('ed9b1d44-4fd5-40ef-ac5f-42a76aeb1a48')
-    # print (ret)
-    #
-    #v.send_whatsup_text (msg_to='972524417562',msg_from='14157386102', msg='Yoyoy here I am !!!')
-
-#test_1 ()
 
 

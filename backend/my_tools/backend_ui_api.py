@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-import os, sys
+import os, sys, json, logging
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from  mng_restApi import Rest_Api
 from mng_vonage import Vonage
 from globals import get_not_none, create_jwt
-import logging
-from pprint import pprint
-import json
-from collections import OrderedDict
-
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -19,28 +13,40 @@ logger = logging.getLogger(__name__)
 class Backend_Ui_Api ():
     WA_CATEGORIES = ['MARKETING','UTILITY','AUTHENTICATION']
     WA_LANGUAGES = {"he":"HEBREW", "en":"ENGLISH"}
+
+    RESPONSE_SUCCESS = 'data'
+    RESPONSE_FAILED = 'error'
+
     def __init__ (self, api_key=None, api_secret=None, app_id=None, app_secret=None, waba_id=None):
-        self._api_key, self._api_secret, self._application_id, self._application_secret, self._waba_id = api_key, api_secret, app_id, app_secret, waba_id
+        self._api_key, self._api_secret, self._application_id, self._application_secret = api_key, api_secret, app_id, app_secret
         self._msg_id, self._api = None, None
         self._all_wa_templates = []
 
-        self._api = Vonage()
+        self._waba_id = get_not_none(waba_id, Config.WABA_ID)
+        self._api = Vonage(waba_id=self._waba_id)
 
-    def connect (self, api_key=None, api_secret=None, app_id=None, app_secret=None, waba_id=None):
+
+    def connect_api (self, api_key=None, api_secret=None):
         self._api_key = get_not_none(api_key, self._api_key,  Config.API_KEY)
         self._api_secret = get_not_none(api_secret, self._api_secret, Config.API_SECRET)
+
+        self._api.connect_api(key=self._api_key, secret=self._api_secret)
+
+    def connect_app (self, app_id=None, app_secret=None):
         self._application_id = get_not_none(app_id, self._application_id, Config.APPLICATION_KEY)
         self._application_secret = get_not_none(app_secret, self._application_secret, Config.APPLICATION_SECRET)
-        self._waba_id = get_not_none(waba_id, self._waba_id, Config.WABA_ID)
 
-        self._api.connect(key=self._api_key, secret=self._api_secret, app_id=self._application_id,
-                          app_secret=self._application_secret, waba_id=self._waba_id)
+        if self._application_id and self._application_secret:
+            self._api.connect_app(app_id=self._application_id, app_secret=self._application_secret)
 
-    def is_connect (self):
-        return self._api.is_connect()
 
-    def is_connect_application(self):
-        return self._api.is_coonect_aaplication()
+    @property
+    def is_api_connect (self):
+        return self._api.is_api_connected
+
+    @property
+    def is_app_connect(self):
+        return self._api.is_app_connected
 
     @property
     def msg_id(self):
@@ -63,6 +69,22 @@ class Backend_Ui_Api ():
                 ret.append ( [app.get("name","Please define !"), app_id, add_numbers , app.get(self._api.APP_CAPABILITIES, [])] )
         return ret
 
+    @property
+    def subapi(self):
+        return self._api.all_subapis
+
+    @property
+    def all_numbers(self):
+        return self._api.all_numbers
+
+    @property
+    def waba_id(self):
+        return self._api.waba_id
+
+    @waba_id.setter
+    def waba_id(self, val):
+        self._api.waba_id = val
+
     def apps_by_capabilites (self, capability):
         ret = []
         all_apps = self._api.all_apps
@@ -74,54 +96,42 @@ class Backend_Ui_Api ():
                 if capability.lower() in capabilities_dict:
                     ret.append ([app_id, f"{app_id} | {app_name}"])
         return ret
-    @property
-    def subapi(self):
-        return self._api.all_subapis
 
-    @property
-    def all_numbers (self):
-        return self._api.all_numbers
 
-    def set_credentials_api  (self, api_key, api_secret):
-        self._api.set_api_obj(api_key=api_key, api_secret=api_secret)
+    def connect_api  (self, api_key, api_secret):
+        self._api.connect_api(key=api_key, secret=api_secret)
 
-    def set_credentials_application  (self, app_id, app_secret):
-        self._api.set_app_obj(app_id=app_id, app_secret=app_secret)
+    def connet_app  (self, app_id, app_secret):
+        self._api.connect_app(app_id=app_id, app_secret=app_secret)
 
-    def set_waba  (self, waba_id):
-        self._api.set_waba(waba_id=waba_id)
-
-    def send_sms_restapi (self, send_from, send_to, msg):
+    def sms_send_restapi (self, send_from, send_to, msg):
         self._msg_id = None
         _props = {"from": send_from,
                     "text": msg,
                     "to": send_to,
                     "api_key": self._api_key,
                     "api_secret": self._api_secret}
-        _res = self._api.send_sms_restapi(props=_props)
-        self._msg_id = self._api.extract_massage_id(res=_res)
+        print ("tal", self._api_secret, self._api_key)
+        _res = self._api.sms_send_restapi(props=_props)
+        self._msg_id = self._api.massage_extract_id(res=_res)
 
         return self._api.get_response(msg_init=f">>> rest_send_sms FROM {send_from} TO {send_to} MSG ID: {self._msg_id}")
 
-    def send_sms_sdk (self, send_from, send_to, msg):
+    def sms_send_sdk (self, send_from, send_to, msg):
         self._msg_id = None
         _props = {
             'from':send_from,
             'to': send_to,
             'text':msg
         }
-        _res = self._api.send_sms_sdk(props=_props)
-        self._msg_id = self._api.extract_massage_id(res=_res)
+        _res = self._api.sms_send_sdk(props=_props)
+        self._msg_id = self._api.massage_extract_id(res=_res)
 
         return self._api.get_response(msg_init=f">>> PYTHON CDK Send SMS FROM {send_from} TO {send_to} MSG ID: {self._msg_id}")
 
-    def wa_get_templates (self, app_id=None, app_secret=None, waba_id=None ):
-        self._all_wa_templates =  self._api.wa_get_templates(app_id=app_id, app_secret=app_secret,
-                                          waba_id=waba_id, update=True, json_templates=None)
-
-        self._all_wa_templates = self._all_wa_templates if self._all_wa_templates else []
-        return self._all_wa_templates
-
+    def wa_templates_get (self, waba_id=None, update=True ):
+        all_templates = self._api.wa_templates_get( waba_id=waba_id, update=update, wa_templates=None)
+        return all_templates if all_templates else {}
     def wa_update_template (self, name, component):
         if self._all_wa_templates:
             _existing_names = [k for k,v in self._all_wa_templates.items()]
@@ -129,33 +139,23 @@ class Backend_Ui_Api ():
             _existing_names = []
         _json_comp = json.loads(component)
 
-        res = self._api.wa_update_template(existing_names=_existing_names, name=name, component=_json_comp, app_id=None, app_secret=None, waba_id=None)
+        res = self._api.wa_template_update(existing_names=_existing_names, name=name, component=_json_comp, app_id=None, app_secret=None, waba_id=None)
         return res
+
+    def wa_embeded_valid_number (self, number, business_id=None, auth=None):
+        auth = auth if auth and len(auth)>0 else Config.WA_EMBEDED_AUTH
+        business_id = business_id if business_id and len(business_id)>0 else Config.WA_BUSINESS_ACCOUNT
+
+        if number and auth and business_id:
+            return self._api.wa_embeded_valid_number(number=number, auth=auth, business_id=business_id )
 
     def get_numbers_to_buy (self, country):
         return self._api.get_number_to_buy (country=country)
 
-"""" REAL TIME FUNCTION """
-
-def test_1 ():
-    logging.basicConfig(level=logging.INFO)
-    api = Backend_Ui_Api ()
-
-    # res = api.send_sms_sdk(send_from="YOYO123", send_to="447754351600", msg="Hallo world !!")
-    res = api.wa_get_templates ( )
-    print (res)
-
-def test_2 ():
-    res = api.wa_get_templates (
-        app_id="",
-        app_secret="",
-        waba_id="",update=True )
-
-    for k,v in res.items():
-        print (v['template'])
-        print ("-------------------")
-        con = api.wa_exec_template (template=v['template'], send_from='', send_to="")
-        json_res = json.dumps(con, indent=2)
-        print (json_res)
-
-#test_1()
+    def get_external_account (self, provider="whatsapp"):
+        ret = []
+        _external_account =  self._api.external_accounts_get (provider=provider)
+        if _external_account:
+            for acc in _external_account:
+                ret .append ([acc.get('external_id'), acc.get('aggregate_id'),acc.get('name') ])
+        return ret

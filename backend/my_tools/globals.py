@@ -5,6 +5,7 @@ GLOBAL FUNCTION
 import os, socket, jwt
 from time import time
 from uuid import uuid4
+import base64
 
 
 """ Return the first not null value from list of arguments """
@@ -41,6 +42,7 @@ def ping_url(url, port=None ):
     print (f"Checked using socket. url:{url}, port:{port}, connected: {is_open}")
     return is_open
 
+
 def create_jwt (app_id, app_secret_file=None, app_secret_str=None, expires_hours=None):
     algorithm = 'RS256'
     if app_secret_file:
@@ -75,8 +77,16 @@ def create_jwt (app_id, app_secret_file=None, app_secret_str=None, expires_hours
     print("---------------     TOKEN       ----------------------")
     return token_str
 
+def create_base64 (key, secret):
+    if key and len(key)>0 and secret and len(secret)>0:
+        s = f"{key}:{secret}"
+        s_bytes = s.encode("ascii")
+        # base64_string = base64_bytes.decode("ascii")
+        return base64.b64encode(s_bytes)
 
-def tests():
+
+
+def test_1():
     create_jwt (app_key="bd240d61-98fd-4379-9850-aec8ecd867aa",
                 app_secret_file="/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key",
                 expires_hours=None)
@@ -85,5 +95,9 @@ def tests():
                 app_secret_str="e2IN2xM3Amwx0Ktg",
                 expires_hours=None)
 
+def test_2 (key, secret):
+    k = create_base64(key, secret)
+    print (k)
 
-    # Create JWT: vonage jwt --key_file=/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key --app_id=bd240d61-98fd-4379-9850-aec8ecd867aa
+# Create JWT: vonage jwt --key_file=/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key --app_id=bd240d61-98fd-4379-9850-aec8ecd867aa
+#test_2 (key="292e6c87", secret="e2IN2xM3Amwx0Ktg")

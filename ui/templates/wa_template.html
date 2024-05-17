@@ -87,25 +87,18 @@
 		<vwc-alert text="{{ message }}" placement="top" removable open></vwc-alert>
     {% endfor %}
 
-	<form id="upload_application" enctype="multipart/form-data">
-		<vwc-layout gutters="small" column-spacing="small">
+	<form id="upload_waba" method="post" action="/submit_waba">
+		<vwc-layout gutters="small" rows-spacing="small">
 		
-				<vwc-select label="Select an application to connect">
-					{% for item in all_apps %}
-						<vwc-option value="{{item[0]}}" text="{{ item[1] }}" ></vwc-option>
-					{% endfor %}
-				</vwc-select>
+			<vwc-select id="wa_waba" name="wa_waba" label="Select an WABA account to connect">
+				{% for item in all_ex_account %}
+					<vwc-option value="{{item[1]}}" text="{{ item[1] }} (Number: {{ item[0] }}; Name: {{ item[2] }}) " ></vwc-option>
+				{% endfor %}
+			</vwc-select>
 
-				<vwc-file-picker id="file_app_secret">
-					Drag & Drop the private key file to connect into your application
-					<span slot="helper-text">Upload private key
-						<a href="#">Learn how create an application</a>
-					</span>
-				</vwc-file-picker>
-
-				<div class="buttons">
-					<vwc-button type="submit" appearance="filled" label="Connect to application"></vwc-button>
-				</div>
+			<div class="buttons">
+				<vwc-button type="submit" appearance="filled" label="Connect to WABA "></vwc-button>
+			</div>
 			
 		</vwc-layout>
 	</form>
@@ -216,17 +209,26 @@
     		$("#upload_application").submit(function(event){
         		event.preventDefault(); // Prevent the form from submitting normally
         
-				var formData = new FormData();
-				formData.append('file', $('#file_app_secret')[0].files[0]);
+				// var formData = new FormData();
+				// formData.append('file', $('#file_app_secret')[0].files[0]);
 			
 				$.ajax({
-					url: '/update_application',
+					url: '/submit_waba',
 					type: 'POST',
-					data: formData,
+					data: $("#wa_waba").val(),
 					processData: false,
-					contentType: false,
+					contentType: 'text/plain',
 					success: function(response) {
-						console.log("File uploaded successfully!");
+						const g_msg = $("global_msg"); 
+						//const g_msg = document.getElementById('global_msg');
+						console.log (g_msg.text);
+						console.log ("g_msg.text");
+						g_msg.headline = "WABA IS SET !";	
+						g_msg.connotation = "success";
+						g_msg.text= response["data"];
+						g_msg.close=false;
+						g_msg.open=true;
+						console.log(response);
 						// Handle the response from the server if needed
 					},
 					error: function(xhr, status, error) {

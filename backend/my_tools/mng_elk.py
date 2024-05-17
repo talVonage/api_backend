@@ -356,7 +356,7 @@ class Elk ():
                     }
                 }
             }
-        return self.scan_to_list(query=query, log_type=log_type)
+        return self.scan_to_df(query=query)
 
     def query_vonage (  self, should_dict=None, must_dict=None,
                         folder=None, start_back_legs=1, to_back_legs=None,

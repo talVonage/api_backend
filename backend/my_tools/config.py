@@ -15,6 +15,8 @@ class Config:
     APPLICATION_KEY = environ.get("APPLICATION_KEY")
     APPLICATION_SECRET=environ.get("APPLICATION_SECRET")
     WABA_ID=environ.get("WABA_ID")
+    WA_EMBEDED_AUTH = environ.get("WA_EMBEDED_AUTH")
+    WA_BUSINESS_ACCOUNT = environ.get("WA_BUSINESS_ACCOUNT")
 
     DICT_APPS = {"DEV":{APP_KEY:"bd240d61-98fd-4379-9850-aec8ecd867aa",
                        APP_SECRET:"/Users/tshany/Documents/gmail_vonage/code/APIs_Keys/private_app_dev.key"}
@@ -23,6 +25,7 @@ class Config:
     ELK_HOST    = environ.get("ELK_HOST")
     ELK_PORT    = environ.get("ELK_PORT")
     ELK_SECRET = environ.get("ELK_SECRET")
+
 
 
     VON_NUMBER = ""
