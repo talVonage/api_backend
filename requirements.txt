@@ -3,7 +3,7 @@ jinja2
 vonage
 PyJWT
 requests
-flask=2.3.3
+flask
 h11
 cryptography
 setuptools
@@ -39,5 +39,10 @@ wheel
 elasticsearch
 wsproto
 python-dotenv
-flask_socketio=5.2.0
+flask_socketio
 flask[async]
+Flask-Session
+phonenumbers
+
+#### Bi-Hackaton
+eland

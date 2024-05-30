@@ -1,3 +1,4 @@
+import json
 import sys, os, time
 import jinja2
 
@@ -12,6 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 from threading import Lock, Event
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO
+from flask_session import Session
 from asset import Asset
 
 from my_tools.config import Config
@@ -23,7 +25,13 @@ env=jinja2.Environment()
 env.policies['json.dumps_kwargs'] = {'sort_keys': False}
 
 app = Flask(__name__, template_folder="../ui/templates", static_folder="../ui/static")
+app.config['SESSION_TYPE'] = 'filesystem'               # You can use other backends like 'redis', 'memcached', etc.
+app.config['SESSION_FILE_DIR'] = './flask_session/'     # Directory to store session files
+app.config['SESSION_PERMANENT'] = False                 # Optional: control session persistence
+Session(app)
+
 Asset(app)
+
 
 socketio = SocketIO(app, async_mode=None)
 thread = None
@@ -33,16 +41,27 @@ thread_event = Event()
 """ Global variables """
 von_api = Backend_Ui_Api()
 
-def connect_api (key=None, secret=None):
-    msg_conn = "Not Connected To Vonage API"
-    _is_conn = False
-    if key and len(key)>0 and secret and len(secret)>0:
-        von_api.connect_api(api_key=key, api_secret=secret)
-
+def connect_api ():
     if von_api.is_api_connect:
-        msg_conn = f"Connected To Vonage, API Key:{von_api.application_id}"
-        _is_conn = True
-    return _is_conn, msg_conn
+        session["connect"] = True
+        return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
+
+    is_form = bool(request.form)
+    if is_form and not von_api.is_api_connect:
+        api_key = request.form.get('api_key')
+        api_secret = request.form.get('api_sec')
+
+        if api_key and len(api_key)>0 and api_secret and len(api_secret)>0:
+            session["key"] = api_key
+            session["secret"] = api_secret
+            von_api.connect_api(api_key=api_key, api_secret=api_secret)
+            if von_api.is_api_connect:
+                session["connect"]=True
+                return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
+            else:
+                return False, f"Error connecting to Vonage API using {api_key} key"
+
+    return False, "Not Connected To Vonage API"
 
 """ Application routes  """
 @app.get('/_/health')
@@ -51,7 +70,8 @@ async def health():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    is_connected, msg_conn = connect_api (key=None, secret=None)
+    is_connected, msg_conn = connect_api ()
+    print ("TAL" , is_connected, msg_conn)
     api_keys = von_api.subapi
     phone_numbers = von_api.all_numbers
     apps = von_api.apps
@@ -68,9 +88,7 @@ def index():
 """ Submit api key and secret """
 @app.route('/submit_api', methods=['POST'])
 def submit_api():
-    api_key     = request.form.get('api_key')
-    api_secret  = request.form.get('api_sec')
-    is_connected, msg_conn = connect_api(key=api_key, secret=api_secret)
+    is_connected, msg_conn = connect_api()
     api_keys = von_api.subapi
     phone_numbers = von_api.all_numbers
     apps = von_api.apps
@@ -87,27 +105,37 @@ def submit_api():
 
 @app.route('/sms')
 def sms():
-    return render_template('sms.html',msg_dict={},)
+    is_connected, msg_conn = connect_api()
+    return render_template('sms.html',
+                           is_connected=is_connected,
+                           msg_conn=msg_conn,
+                           msg_dict={})
 
 @app.route('/verify')
 def verify():
-    return render_template('verify.html')
+    is_connected, msg_conn = connect_api()
+    return render_template('verify.html',is_connected=is_connected,
+                           msg_conn=msg_conn,
+                           msg_dict={})
 
 @app.route('/voice')
 def voice():
-    return render_template('voice.html')
+    is_connected, msg_conn = connect_api()
+    return render_template('voice.html',is_connected=is_connected,
+                           msg_conn=msg_conn,
+                           msg_dict={})
 
 @app.route('/wa_templates')
 def wa_templates():
-    api_key = request.form.get('api_key')
-    api_secret = request.form.get('api_sec')
-    is_connected, msg_conn = connect_api(key=api_key, secret=api_secret)
+    is_connected, msg_conn = connect_api()
     all_templates, all_ex_account = {}, []
 
 
     if is_connected:
+        all_ex_account = von_api.get_external_account(provider="whatsapp")
+        if all_ex_account and len(all_ex_account)>0 and not von_api.waba_id:
+            von_api.waba_id = all_ex_account[0][1]          #WABA ID FROM LIST OF LISTS
         all_templates = von_api.wa_templates_get()
-        all_ex_account = von_api.get_external_account (provider="whatsapp")
 
     return render_template('wa_template.html', all_templates=all_templates,
                            wa_categories=von_api.WA_CATEGORIES,
@@ -169,35 +197,61 @@ def submit_wa():
 
 @app.route('/tech')
 def tech():
+    is_connected, msg_conn = connect_api()
+    phone_numbers = von_api.all_numbers
     return render_template('tech.html',
-                           all_numbers=von_api.all_numbers,
-                           msg_dict={})
+                           all_numbers=phone_numbers,
+                           msg_dict={},
+                           is_connected=is_connected,
+                           msg_conn=msg_conn)
 
 @app.route('/tech_reg_validate_number', methods=['POST'])
 def tech_reg_number ():
     num = request.data.decode('utf-8')
-    res = von_api.wa_embeded_valid_number(number=num)
+    res = von_api.wa_embedded_valid_number(number=num)
     return res
 
 @app.route('/tech_reg_load_numbers', methods=['POST'])
 def tech_reg_load_numbers ():
     country = request.get_json().get('country')
+    numbers = []
     if country and len(country)>0:
         numbers=von_api.get_numbers_to_buy (country)
         if numbers and len(numbers)>0:
             numbers = [num[0] for num in numbers]
-        else:
-            numbers = []
 
     return jsonify(numbers)
 
+@app.route('/tech_reg_call_foreword', methods=['POST'])
+def tech_reg_call_foreword ():
+    data = request.get_json()
+    from_number = data.get("from")
+    to_number = data.get("to")
+    res = von_api.wa_embedded_call_foreword (from_number, to_number, to_disable=False)
+    return res
+
+@app.route('/tech_reg_call_foreword_disabled', methods=['POST'])
+def tech_reg_call_foreword_disabled ():
+    data = request.get_json()
+    from_number = data.get("from")
+    to_number = data.get("to")
+    res = von_api.wa_embedded_call_foreword (from_number, to_number, to_disable=True)
+    return res
+
 @app.route('/tech_reg', methods=['GET', 'POST'])
 def tech_reg ():
-    data = request.get_json()
-    res = data.get('data')
-    print (f"OLLLA {res}")
-    msg = {'data':f"OLLLA {res}"}
-    return "Olllal"  # "#render_template('voice.html', msg_dict=msg)
+    wa_code = request.get_json()
+    status  = wa_code.get('status')
+    resp    = wa_code.get('authResponse')
+
+    ret_json = {"msg": f"WA RESPONSE \n {wa_code}", "id": "", "numbers": []}
+    if resp and "code" in resp:
+        exchange_code = resp["code"]
+        resp = von_api.wa_embedded_debug_token (exchange_code=exchange_code)
+        ret_json = resp if resp and len(resp)>0 else ret_json
+
+    print (f"SERVER: EMBEDDED SIGN UP RESPONSE: {ret_json}")
+    return json.dumps(ret_json)
 
 @app.route('/update_application', methods=['GET', 'POST'])
 def update_application ():

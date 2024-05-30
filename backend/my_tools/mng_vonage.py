@@ -1,4 +1,4 @@
-import json, os
+import json, os, re
 from datetime import datetime
 import vonage
 import logging
@@ -103,13 +103,13 @@ class Vonage ():
     def connect_app(self, app_id=None, app_secret=None):
         if app_id and len(app_id) > 0 and app_secret and len(app_secret) > 0:
             self._vonage_app = vonage.Client(application_id=app_id, private_key=app_secret)
-            _balance = self.get_balance_by_app()
-            if _balance:
-                self._is_app_connected = True
-                self._app_id = app_id
-                self._app_secret = app_secret
-                logger.info(f"Vonage APPLICATION is connected successfully, Current balance: {_balance}")
-                return self._vonage_app
+
+            #TODO: // Check how app is connecteed !
+            self._is_app_connected = True
+            self._app_id = app_id
+            self._app_secret = app_secret
+            logger.info(f"Vonage APPLICATION is connected successfully ... ")
+            return self._vonage_app
 
     def is_waba_exists (self, waba_id=None):
         _waba_id = waba_id if waba_id and len(waba_id)>0 else self._waba_id
@@ -125,16 +125,6 @@ class Vonage ():
             return
         try:
             _balance = self._vonage.account.get_balance()
-            print(f"Account balance is: {_balance}")
-            return _balance
-        except:
-            return None
-
-    def get_balance_by_app (self):
-        if not self._vonage_app:
-            return
-        try:
-            _balance = self._vonage_app.account.get_balance()
             print(f"Account balance is: {_balance}")
             return _balance
         except:
@@ -417,6 +407,154 @@ class Vonage ():
         print (ret)
         return ret
 
+    """ MAIN Function: based on exchange_code -> receive shared wabas -> receive waba numbers    
+        1. API call to receive token
+           self._wa_embedded_debug_token(response) : parsing response. return dictionary with waba id 
+           dict_response =  {'msg':<Message to show for users>, 'id':< List of Managed WABA IDs >}
+           
+        2. API call to receive numbers for manage waba (using the above dict_response ) 
+           self.wa_embedded_waba_get_phone_numbers (waba_id... ):  return list with all numbers : [ [num_id, num]... ]
+           append into dict_response all numbers 
+        return: {'msg':<Message to show for users>, 'id':< List of Managed WABA IDs >, 'numbers':[ [num_id, num ]... ]} 
+    """
+    def wa_embedded_debug_token (self, exchange_code, auth, version="v19.0"):
+        ret = json.dumps ({"msg":"could not connect", "id":"", "numbers":[]})
+        url = f"https://graph.facebook.com/{version}/debug_token?input_token={exchange_code}"
+
+        try:
+            self._method = self.METHOD_API.copy()
+            self._method.append(f"USING CURL: {url}")
+
+            _url_debug = Rest_Api(url=url)
+            _url_debug.set_header('Authorization', auth)
+            logger.info (f"Exec URL: {url}")
+            ret = self._wa_embedded_debug_token (_url_debug.get())
+
+        except Exception as err:
+            self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
+            return ret
+
+
+        logger.info (f"wa_embedded_debug_token response: {ret}")
+        waba_id = ret.get('id')
+        if waba_id and len(waba_id) > 0:
+            for waba in waba_id:
+                phone_numbers = self.wa_embedded_waba_get_phone_numbers(waba_id=waba, auth=auth)
+                ret['numbers'] = phone_numbers
+
+        logger.info (ret)
+        return ret
+
+    """ Return: {"msg":<log message>, "id":<managed waba id>}
+        parse response:
+        {   "data" : {  "app_id" : "670843887433847",
+                        "application" : "JaspersMarket",
+                        "data_access_expires_at" : 1672092840,
+                        "expires_at" : 1665090000,
+                        "granular_scopes" : [   {   "scope" : "whatsapp_business_management",
+                                                    "target_ids" : [
+                                                        "102289599326934", // ID of newest WABA to grant app whatsapp_business_management
+                                                        "101569239400667"]
+                                                 }, … ]
+                        }
+        }
+ 
+     """
+    def _wa_embedded_debug_token (self, response):
+        print(f"TAL1: _wa_embedded_debug_token: {response}")
+
+        ret = {"msg":f"Could not find target IDs in response \n {response}",
+               "id":None}
+
+        if response is not None and len(response)>0 and "data" in response:
+            ret = {"msg":"Data exists in response"}
+            da = response["data"]
+            granular_scope = da.get("granular_scopes")
+            if granular_scope and len (granular_scope)>0:
+                ret['msg'] += "\n granular_scopes in response"
+                for scope in granular_scope:
+                    scope_name = scope.get("scope")
+                    scope_target_ids = scope.get("target_ids")
+                    print (f"Found {scope_name} , target IDs: {scope_target_ids}")
+                    if scope_name and "whatsapp_business_management" == scope_name:
+                        if scope_target_ids and len(scope_target_ids)>0:
+                            ret['msg'] += f"\n found target_ids in response {scope_target_ids}"
+                            ret['id'] = scope_target_ids[0]
+
+        print (f"TAL1: _wa_embeded_debug_token: {ret}")
+        return ret
+
+    """ Return list of lists: [ [number_id, phone number] ... ]
+        self._wa_embedded_waba_get_phone_numbers: Parsing response  
+    """
+    def wa_embedded_waba_get_phone_numbers (self, waba_id, auth, version="v19.0"):
+        print (f"TAL2 wa_embedded_waba_get_phone_numbers : WABA: {waba_id} ")
+        url = f"https://graph.facebook.com/{version}/{waba_id}/phone_numbers?fields=display_phone_number"
+
+        try:
+            _url_debug = Rest_Api(url=url)
+            _url_debug.set_header('Authorization', auth)
+            ret = self._wa_embedded_waba_get_phone_numbers(_url_debug.get())
+
+        except Exception as err:
+            self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
+            return
+
+        print(f"TAL2 wa_embedded_waba_get_phone_numbers : response: {ret} ")
+        return ret
+
+    """ Parse response format :
+    {"data": [
+        {   "id": "1972385232742141",    
+            "display_phone_number": "+1 631-555-1111" }]
+    }
+    """
+    def _wa_embedded_waba_get_phone_numbers (self, response):
+        ret = []
+        if response and len(response)>0 and "data" in response:
+            for number in response["data"]:
+                num_id = number.get("id")
+                num_display = number.get("display_phone_number")
+                if num_display and len(num_display)>0:
+                    num_display = re.sub(r'\D', '', num_display)
+                    ret.append ( (num_id, num_display))
+        return ret
+
+    def numbers_update_call_forwards (self, country, from_number, to_number, call_back_type="tel"):
+        to_number = to_number if to_number and len(to_number) > 0 else ""
+        data_dict = {
+            "country":country,
+            "msisdn":from_number,
+            "voiceCallbackValue":to_number,
+            "voiceCallbackType":call_back_type
+        }
+        if not self._is_api_connected or not self._api_bearer:
+            logger.error (f"numbers_update_call_forwards:-> Not connected to Vonage API")
+            return "Not connected to vonage api"
+
+        url = "https://rest.nexmo.com/number/update"
+        try:
+            self._method = self.METHOD_API.copy()
+            self._method.append(f"USING CURL: {url}")
+
+            _url = Rest_Api(url=url)
+            _url.set_header('Authorization', self._api_bearer)
+            _url.set_header(k=_url.CONTENT_TYPE_STR)
+            res = _url.post(data=data_dict)
+            self._is_ok = True
+            error_code = res.get('error-code')
+            if error_code and error_code == '200':
+                if to_number == "":
+                    return "Number Forward Is Disabled "
+                return f"Number Forward to {to_number} successfully .. "
+            else:
+                return f"Response: {res}"
+
+        except Exception as err:
+            self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
+            return f"ERROR: {err}"
+
+
     def get_response(self, msg_init=None):
         ret = {}
         if self.RESPONSE_FAILED in self._response:
@@ -460,7 +598,6 @@ class Vonage ():
 
         logger.info (f"External accounts: {ret}")
         return ret
-
 
 
     """ INTERNAL HELP FUNCTIONS - PRIVATE METHODS """

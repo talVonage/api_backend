@@ -26,7 +26,8 @@
     <vwc-divider role="presentation"></vwc-divider>
 
     <div style="display: flex; flex-direction: row; gap: 10px;">
-        <vwc-select id="select_country" label="country code" icon="flag-united-states" style="width: 150px;">
+        <vwc-select id="select_country" label="country code" 
+         icon="flag-united-states" style="width: 150px;" placeholder="choose..." icon="flag-united-kingdom">
             <vwc-option value="US" text="+1 " icon="flag-united-states"></vwc-option>
             <vwc-option value="GB" text="+44" icon="flag-united-kingdom"></vwc-option>
             <vwc-option value="IL" text="+972" icon="flag-israel"></vwc-option>
@@ -49,6 +50,11 @@
                 Number is valid 
             </label>
         </div>
+
+        <button id="btn_add1"
+            style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Purchase and add number  
+        </button>
         
     </div>
 
@@ -70,17 +76,65 @@
                 Number is valid 
             </label>
         </div>
+
+        <button id="btn_add2"
+            style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Add number   
+        </button>
     </div>
 
-    
+    <div style="display: flex; flex-direction: row; gap: 10px;"">
+
+        <vwc-text-field required label="WhatsApp Phone Number" id="wa_number" name="wa_number" type="tel" autocomplete="tel" 
+            shape="pill" placeholder="Connect phone number to whatsapp account"  icon="whatsapp-mono" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <vwc-text-field style="width: 500px;" label="Verify Call Foraward Phone Number" id="wa_forward" name="wa_forward" type="tel" autocomplete="tel" 
+            shape="pill" placeholder="Foreward your verification call into this number"  icon="whatsapp-mono" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <button id="btn_forword"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Enable Call Foreward  
+        </button>
+
+        <button id="btn_forword_disable"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Disable Call Foreward  
+        </button>
+    </div>
+
     Embeded Sign Up
     <vwc-divider role="presentation"></vwc-divider>
-    
-    <div style="display: flex; justify-content: center; align-items: center;">
+
+    <div style="display: flex; align-items: center; /*justify-content: center;*/"> 
+
         <button onclick="launchWhatsAppSignup()"
                 style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; height: 40px; padding: 10px 24px;">
         Sign up for WhatsApp
         </button>
+
+        <style>
+            .string { color: green; }
+            .number { color: darkorange; }
+            .boolean { color: blue; }
+            .null { color: magenta; }
+            .key { color: red; }
+        </style>
+
+        <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+            <!-- Column 2 -->
+            <div style="padding: 10px; ">
+                <div style="font-weight: bold; margin-bottom: 5px;">META Response</div>
+                <div id="res_wa" style="color: #333;padding: 5px; margin: 5px; ">Meta Json reposne</div>
+            </div>
+            <!-- Column 2 -->
+            <div style="padding: 10px; ">
+                <div style="font-weight: bold; margin-bottom: 5px;">VONAGE Response</div>
+                <div id="res_vonage" style="color: #333; padding: 5px; margin: 5px; ">Vonage respone (shared WABA and numbers)</div>
+            </div>
+        </div>
+
     </div>
      
 
@@ -109,6 +163,29 @@
             });
 
         $(document).ready(function(){
+
+            function syntaxHighlight(json) {
+                if (typeof json != 'string') {
+                    json = JSON.stringify(json, undefined, 2);
+                }
+                json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                    var cls = 'number';
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) {
+                            cls = 'key';
+                        } else {
+                            cls = 'string';
+                        }
+                    } else if (/true|false/.test(match)) {
+                        cls = 'boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'null';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                });
+            }
+
             function makeAjaxCall(phone_num, lbl) {
                 $.ajax({
                     url: "/tech_reg_validate_number",
@@ -126,10 +203,64 @@
                     }
                 });
             }
+            
+            $("#btn_forword").click(function(){
+                var phone_foreward = $("#wa_forward").val();
+                var phone_from = $("#wa_number").val();
+
+                var data = {"from":phone_from, "to":phone_foreward}
+                console.log  ("Number "+phone_from + " is foreword to "+ phone_foreward)
+                $.ajax({
+                    url: "/tech_reg_call_foreword",
+                    type: "POST",
+                    data: JSON.stringify(data), // Change the message content as needed
+                    contentType: "application/json",
+                    success: function(response) {
+                        console.log("Success:", response);
+                        // const g_msg = $("global_msg"); 
+                        const g_msg = document.getElementById('global_msg');
+						g_msg.headline = "CALL FOREWRORD IS ENABLED !";	
+						g_msg.connotation = "success";
+						g_msg.text= response;
+						g_msg.close=false;
+						g_msg.open=true;
+                    },
+                    error: function(xhr, status, error) {
+                        console.log("Error:", error);
+                        // Handle the error response here
+                    }
+                });
+            });
+            
+            $("#btn_forword_disable").click(function(){
+                var phone_from = $("#wa_number").val();
+                var data = {"from":phone_from, "to":""}
+                console.log ("Disabled Foreward number "+ phone_from)
+                $.ajax({
+                    url: "/tech_reg_call_foreword_disabled",
+                    type: "POST",
+                    data: JSON.stringify(data), // Change the message content as needed
+                    contentType: "application/json",
+                    success: function(response) {
+                        console.log("Success:", response);
+                        // const g_msg = $("global_msg");
+                        const g_msg = document.getElementById('global_msg'); 
+						g_msg.headline = "CALL FOREWRORD IS DISABLED !";	
+						g_msg.connotation = "success";
+						g_msg.text= response;
+						g_msg.close=false;
+						g_msg.open=true;
+                    },
+                    error: function(xhr, status, error) {
+                        console.log("Error:", error);
+                        // Handle the error response here
+                    }
+                });
+            });
 
             $("#btn_wa1").click(function(){
                 var phone_num = $("#combo_wa_1").val();
-                var lbl = $("#label_wa1")
+                var lbl = $("#label_wa1")  
                 console.log ("Checking number "+phone_num)
                 makeAjaxCall(phone_num, lbl)        
             });
@@ -141,23 +272,39 @@
                 makeAjaxCall(phone_num, lbl)        
             });
             
+            $("#btn_add1").click(function(){
+                var phone_num = $("#combo_wa_1").val();
+                $("#wa_number")[0].value = phone_num;
+            });
 
+            $("#btn_add2").click(function(){
+                var phone_num = $("#combo_wa_2").val();
+                $("#wa_number")[0].value = phone_num;
+            });
 
-            $("#myButton").click(function(){
+            $("#myButton_test").click(function(){
                 var c_name = $("#company_name").val();
                 var c_mail = $("#company_mail").val();
                 var c_website = $("#company_website").val();
+                var data = {
+                    "authResponse": {
+                        "userID": null,
+                        "expiresIn": null,
+                        "code": "<CODE_TO_BE_EXCHANGED>"},
+                    "status": "connected"
+                }
 
-                alert ("Hello world !!! "+ c_name);
 
                 $.ajax({
                     url: "/tech_reg", // Change this to your Flask route
                     type: "POST",
-                    data: JSON.stringify({data: "JOHNNNY"}), // Change the message content as needed
+                    data: JSON.stringify(data), // Change the message content as needed
                     contentType: "application/json",
                     success: function(response) {
                         console.log("Message sent successfully!");
-                        console.log(response);
+                        var resp = syntaxHighlight(response);
+                        console.log(resp);
+                        $("#res_wa").html(resp);
                         // You can handle the response from the server here
                     },
                     error: function(xhr, status, error) {
@@ -196,6 +343,7 @@
             var c_name = $("#company_name").val();
             var c_mail = $("#company_mail").val();
             var c_website = $("#company_website").val();
+            var phone_number = $("#wa_number").val();
             
             var config_id = '995782168666847'
             var solution_id = '842627454528807'
@@ -205,8 +353,31 @@
                 function (response) {
                     if (response.authResponse) {
                         const code = response.authResponse.code;
+                        var resp = syntaxHighlight(code);
+                        console.log("META Response: ");
+                        console.log(code);
+                        console.log("--------------");
+                        $("#res_wa").html(resp);
+                        
                         // The returned code must be transmitted to your backend,
                         // which will perform a server-to-server call from there to our servers for an access token
+
+                        $.ajax({
+                            url: "/tech_reg", 
+                            type: "POST",
+                            data: JSON.stringify(code), // Change the message content as needed
+                            contentType: "application/json",
+                            success: function(response) {
+                                // {'msg':<message to show>, "id":<SHARED WABA ID>, "numbers":<Shared numbers>}
+                                $("#res_vonage").text(response);
+                                
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("Error sending message:", error);
+                            }
+                        });
+
+                        
                     } else {
                         console.log('User cancelled login or did not fully authorize.');
                     }
@@ -220,12 +391,13 @@
                             solutionID: solution_id,
                             business: {	name: c_name,
                                         email: c_mail,
-                                        website: c_website}	
-                    },
-
+                                        website: c_website},
+                            preVerifiedPhone: {
+                                ids: [phone_number]
+                                }
+                            },
                         }
                     }
-                
                 );
         };
 

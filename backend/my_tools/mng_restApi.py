@@ -74,9 +74,7 @@ class Rest_Api():
             return None
 
         if self._headers and self.CONTENT_TYPE in self._headers:
-
             if self.CONTENT_DICT.get(self.CONTENT_TYPE_STR, None) == self._headers [self.CONTENT_TYPE]:
-                pass
                 if isinstance(data, dict):
                     return "&".join ([f"{k}={v}"for k,v in data.items()])
 
@@ -90,7 +88,6 @@ class Rest_Api():
             headers.update(self._headers)
         else:
             headers=self._headers
-
         data = self._set_data (data)
 
         if post_url:

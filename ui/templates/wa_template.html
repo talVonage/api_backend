@@ -316,7 +316,7 @@
 			}
 		}
 
-		conn = 'https://' + document.domain + ':' + location.port
+		conn = window.location.protocol+'//' + document.domain + ':' + location.port
 		var socket = io.connect(conn);
 
         // Listen for 'sms_logs' events and append logs to the #logs div

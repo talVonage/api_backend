@@ -1,0 +1,21 @@
+project:
+    name: tal-dev
+instance:
+    name: tal-dev
+    runtime: python3
+    region: aws.euw1
+    application-id: 204db25b-b49d-42e0-a948-4c8d629eaab6
+    entrypoint:
+        - python3
+        - backend/server.py
+    build-script: ./build.sh
+debug:
+    name: debug
+    application-id: 204db25b-b49d-42e0-a948-4c8d629eaab6
+    entrypoint:
+        - python3
+        - -m
+        - debugpy
+        - --listen
+        - localhost:443
+        - backend/server.py

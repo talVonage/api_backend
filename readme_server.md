@@ -15,6 +15,7 @@ vcr configure
     api secret: e2IN2xM3Amwx0Ktg
 vcr upgrade
 vcr deply 
+vcr log --id=<my-instance-id>   --> Get VCR Logs 
 
 
 create new project:

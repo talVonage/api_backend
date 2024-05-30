@@ -7,6 +7,9 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from mng_vonage import Vonage
 from globals import get_not_none, create_jwt
 from config import Config
+import phonenumbers
+from phonenumbers.phonenumberutil import region_code_for_country_code, region_code_for_number
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,11 @@ class Backend_Ui_Api ():
     @property
     def application_id (self):
         return self._api.application_id
+
+    @property
+    def app_key(self):
+        return self._api._api_key
+
     @property
     def apps(self):
         ret = []
@@ -142,16 +150,40 @@ class Backend_Ui_Api ():
         res = self._api.wa_template_update(existing_names=_existing_names, name=name, component=_json_comp, app_id=None, app_secret=None, waba_id=None)
         return res
 
-    def wa_embeded_valid_number (self, number, business_id=None, auth=None):
+    def wa_embedded_valid_number (self, number, business_id=None, auth=None):
         auth = auth if auth and len(auth)>0 else Config.WA_EMBEDED_AUTH
         business_id = business_id if business_id and len(business_id)>0 else Config.WA_BUSINESS_ACCOUNT
 
         if number and auth and business_id:
             return self._api.wa_embeded_valid_number(number=number, auth=auth, business_id=business_id )
 
+    def wa_embedded_debug_token (self, exchange_code, auth=None):
+        auth = auth if auth and len(auth) > 0 else Config.WA_EMBEDED_AUTH
+
+        if exchange_code and auth:
+            res = self._api.wa_embedded_debug_token(exchange_code=exchange_code, auth=auth )
+            logger.info (f"TAL2: backend_ui_api -> wa_embedded_debug_token, res: {res}")
+            return res
+
+    def wa_embedded_call_foreword (self, from_number, to_number, to_disable=False):
+        res = "Nothing ... "
+        country_code = None
+        if to_disable:
+            to_number = ""
+            pn = phonenumbers.parse(f"+{from_number}")
+            country_code = region_code_for_country_code(pn.country_code)
+        elif to_number and len(to_number)>0 and from_number and len(from_number)>0:
+            pn = phonenumbers.parse(f'+{to_number}')
+            country_code = region_code_for_country_code(pn.country_code)
+
+        if country_code:
+            res = self._api.numbers_update_call_forwards(country=country_code, from_number=from_number, to_number=to_number)
+        return res
+
     def get_numbers_to_buy (self, country):
         return self._api.get_number_to_buy (country=country)
 
+    """Return [ [PHONE_NUMBER, WABA_ID, ACCOUNT_NAME] .. ] """
     def get_external_account (self, provider="whatsapp"):
         ret = []
         _external_account =  self._api.external_accounts_get (provider=provider)
