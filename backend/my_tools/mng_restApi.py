@@ -77,8 +77,12 @@ class Rest_Api():
             if self.CONTENT_DICT.get(self.CONTENT_TYPE_STR, None) == self._headers [self.CONTENT_TYPE]:
                 if isinstance(data, dict):
                     return "&".join ([f"{k}={v}"for k,v in data.items()])
+        else:
+            self.set_header(self.CONTENT_TYPE, "application/json")
 
-        return json.dumps(data).encode('utf-8') if data and len(data) > 0 else None
+        data = json.dumps(data).encode("utf-8") if isinstance(data, (dict, OrderedDict)) else data
+
+        return  data
 
 
     def _send (self, type, base_url=None, post_url=None, data=None, headers=None, respose_is_json=True):

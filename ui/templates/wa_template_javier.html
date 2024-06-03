@@ -68,7 +68,7 @@
 			}
 			if (headerParamDiv.childElementCount) {
 				for (let i = 1; i <= headerParamDiv.childElementCount; i++) {
-				headerParameters[`param${i}`] = document.getElementById(`headerParam${i}`)?.value;
+				headerParameters['param'+i] = document.getElementById('headerParam'+i)?.value;
 				}
 			}
 			if (parametersBody.childElementCount) {
@@ -173,7 +173,7 @@
 			let prevHeader = header;
 			for (let i = 1; i <= numberParams; i++) {
 			if (document.getElementById(`parameter${i}`).value !== '' && prev) {
-				prev = prev?.replace(`{{${i}}}`, `{{${document.getElementById(`parameter${i}`).value}}}`);
+				prev = prev?.replace(`{% i %}`, `{{ ${document.getElementById(`parameter${i}`).value}}}`);
 				preview.placeholder = `${header || ''}\n${prev}`;
 			}
 			}

@@ -43,8 +43,13 @@ von_api = Backend_Ui_Api()
 
 def connect_api ():
     if von_api.is_api_connect:
-        session["connect"] = True
-        return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
+        if "key" not in session:
+            von_api.disconnect()
+            session["connect"] = False
+            return False, "Not Connected To Vonage API"
+        else:
+            session["connect"] = True
+            return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
 
     is_form = bool(request.form)
     if is_form and not von_api.is_api_connect:
@@ -54,7 +59,7 @@ def connect_api ():
         if api_key and len(api_key)>0 and api_secret and len(api_secret)>0:
             session["key"] = api_key
             session["secret"] = api_secret
-            von_api.connect_api(api_key=api_key, api_secret=api_secret)
+            von_api.connect_api(api_key=session["key"], api_secret=session["secret"])
             if von_api.is_api_connect:
                 session["connect"]=True
                 return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
@@ -71,7 +76,6 @@ async def health():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     is_connected, msg_conn = connect_api ()
-    print ("TAL" , is_connected, msg_conn)
     api_keys = von_api.subapi
     phone_numbers = von_api.all_numbers
     apps = von_api.apps
@@ -128,13 +132,16 @@ def voice():
 @app.route('/wa_templates')
 def wa_templates():
     is_connected, msg_conn = connect_api()
-    all_templates, all_ex_account = {}, []
+    all_templates, all_ex_account, all_msg_apps = {}, [], []
 
 
     if is_connected:
         all_ex_account = von_api.get_external_account(provider="whatsapp")
         if all_ex_account and len(all_ex_account)>0 and not von_api.waba_id:
             von_api.waba_id = all_ex_account[0][1]          #WABA ID FROM LIST OF LISTS
+            all_msg_apps = von_api.get_application_messages(all_ex_account[0][0])  #PHONE NUMBER FROM LIST OF LISTS
+        else:
+            all_msg_apps = von_api.get_application_messages()
         all_templates = von_api.wa_templates_get()
 
     return render_template('wa_template.html', all_templates=all_templates,
@@ -142,41 +149,38 @@ def wa_templates():
                            wa_lang=von_api.WA_LANGUAGES,
                            msg_dict={},
                            all_ex_account=all_ex_account,
+                           all_msg_apps=all_msg_apps,
                            is_connected=is_connected,
                            msg_conn=msg_conn)
+
+@app.route('/wa_exec', methods=['POST'])
+def wa_exec():
+
+    try:
+        req = request.get_json()
+        template = json.loads(req)
+        if template and len(template)>0:
+            res = von_api.wa_send(template=template)
+            return {von_api.RESPONSE_SUCCESS:res}
+        else:
+            return {von_api.RESPONSE_FAILED: "Empty template to send "}
+    except:
+        return {von_api.RESPONSE_FAILED: "Error loading template "}
 
 @app.route('/submit_waba', methods=['POST'])
 def submit_waba():
-    is_connected, msg_conn = connect_api()
-    waba_id       = request.form.get('wa_waba')
+    waba_id       = request.data.decode('utf-8')
     if waba_id and len(waba_id)>0:
         von_api.waba_id = waba_id
-        msg = {von_api.RESPONSE_SUCCESS:f"Using WABA ID {waba_id}"}
-    else:
-        msg = {von_api.RESPONSE_FAILED: f"Failed to upload  WABA ID "}
-    all_templates, all_ex_account = {}, []
 
-    if von_api.is_api_connect:
+    is_connected, msg_conn = connect_api()
+
+    if is_connected:
         all_templates = von_api.wa_templates_get()
-        all_ex_account= von_api.get_external_account(provider="whatsapp")
-
-    return render_template('wa_template.html', all_templates=all_templates,
-                           wa_categories=von_api.WA_CATEGORIES,
-                           wa_lang=von_api.WA_LANGUAGES,
-                           msg_dict=msg,
-                           all_ex_account=all_ex_account,
-                           is_connected=is_connected,
-                           msg_conn=msg_conn)
-
-
-
-    return {von_api.RESPONSE_SUCCESS: f"{str(waba_id)}\n\n Hello world! "}
-
-    #render_template('messages.html',
-    #                       all_templates=[],
-    #                       wa_categories=von_api.WA_CATEGORIES,
-    #                       wa_lang=von_api.WA_LANGUAGES,
-    #                       msg_dict={von_api.RESPONSE_SUCCESS: f"<span>{str(waba_id)}<span><br>"})
+        msg = {von_api.RESPONSE_SUCCESS:f"Using WABA ID {waba_id}", "templates":all_templates}
+    else:
+        msg = {von_api.RESPONSE_FAILED: f"Failed to upload  WABA ID ", "templates": {}}
+    return msg
 
 @app.route('/submit_wa', methods=['POST'])
 def submit_wa():
@@ -200,6 +204,16 @@ def tech():
     is_connected, msg_conn = connect_api()
     phone_numbers = von_api.all_numbers
     return render_template('tech.html',
+                           all_numbers=phone_numbers,
+                           msg_dict={},
+                           is_connected=is_connected,
+                           msg_conn=msg_conn)
+
+@app.route('/tech2')
+def tech2():
+    is_connected, msg_conn = connect_api()
+    phone_numbers = von_api.all_numbers
+    return render_template('wa_template_javier.html',
                            all_numbers=phone_numbers,
                            msg_dict={},
                            is_connected=is_connected,
@@ -253,31 +267,26 @@ def tech_reg ():
     print (f"SERVER: EMBEDDED SIGN UP RESPONSE: {ret_json}")
     return json.dumps(ret_json)
 
-@app.route('/update_application', methods=['GET', 'POST'])
-def update_application ():
-    is_connected = False
-    msg_conn = "Not Connected To Any Vonage Application"
-    uploaded_file = request.files['file']
+@app.route('/connect_application', methods=[  'POST'])
+def connect_application ():
+
+    uploaded_file = request.files.get('file')
+    app_id = request.form.get('text')
 
     if uploaded_file:
         file_name = uploaded_file.filename
         if file_name and len(file_name)>0:
             file_content = uploaded_file.read()
-            print (f"file content loaded successfully, name: {file_name}")
-            all_templates = von_api.wa_get_templates(app_id='xxxx', app_secret=file_content)
-            all_apps = von_api.apps_by_capabilites(capability="messages")
-
-            return render_template('messages.html', all_templates=all_templates,
-                                   wa_categories=von_api.WA_CATEGORIES,
-                                   wa_lang=von_api.WA_LANGUAGES,
-                                   msg_dict={},
-                                   all_apps=all_apps,
-                                   is_connected=is_connected,
-                                   msg_conn=msg_conn)
+            file_content = file_content.decode('utf-8')
+            session["app_key"] = app_id
+            session["app_secret"] = file_content
+            app = von_api.connect_app(session=session)
+            if app:
+                return {"data":f"Connected to app {app_id}"}
+            else:
+                return {"error": f"Error connecting to application"}
     else:
-        return "No file uploaded!"
-
-
+        return {"error":"File is not uploaded... Not connected !"}
 
 """ WEBHOOKS VONAGE API"""
 @app.route('/webhooks/delivery', methods=['POST'])

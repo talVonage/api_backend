@@ -29,19 +29,27 @@ class Backend_Ui_Api ():
         self._api = Vonage(waba_id=self._waba_id)
 
 
-    def connect_api (self, api_key=None, api_secret=None):
+    def connect_api (self,  api_key=None, api_secret=None):
         self._api_key = get_not_none(api_key, self._api_key,  Config.API_KEY)
         self._api_secret = get_not_none(api_secret, self._api_secret, Config.API_SECRET)
 
         self._api.connect_api(key=self._api_key, secret=self._api_secret)
 
-    def connect_app (self, app_id=None, app_secret=None):
+    def disconnect (self):
+        self._api._is_api_connected = False
+        self._api._is_app_connected = False
+        self._api._vonage = None
+        self._api._vonage_app = None
+
+    def connect_app (self, session):
+        app_id = session["app_key"] if session and "app_key" in session else None
+        app_secret = session["app_secret"] if session and "app_secret" in session else None
         self._application_id = get_not_none(app_id, self._application_id, Config.APPLICATION_KEY)
         self._application_secret = get_not_none(app_secret, self._application_secret, Config.APPLICATION_SECRET)
 
         if self._application_id and self._application_secret:
-            self._api.connect_app(app_id=self._application_id, app_secret=self._application_secret)
-
+            logger.info (f"connect_app -> Successfully connected to application ")
+            return self._api.connect_app(app_id=self._application_id, app_secret=self._application_secret)
 
     @property
     def is_api_connect (self):
@@ -150,6 +158,10 @@ class Backend_Ui_Api ():
         res = self._api.wa_template_update(existing_names=_existing_names, name=name, component=_json_comp, app_id=None, app_secret=None, waba_id=None)
         return res
 
+    def wa_send (self, template):
+        return self._api.messages_send_restapi (template=template)
+
+
     def wa_embedded_valid_number (self, number, business_id=None, auth=None):
         auth = auth if auth and len(auth)>0 else Config.WA_EMBEDED_AUTH
         business_id = business_id if business_id and len(business_id)>0 else Config.WA_BUSINESS_ACCOUNT
@@ -190,4 +202,14 @@ class Backend_Ui_Api ():
         if _external_account:
             for acc in _external_account:
                 ret .append ([acc.get('external_id'), acc.get('aggregate_id'),acc.get('name') ])
+        return ret
+
+    def get_application_messages (self, phone_number=None):
+        ret = []
+        for app in self.apps:
+            if 'messages' in app[3]:
+                if phone_number and phone_number in app[2]:
+                    ret.insert(0, [app[1], f"{app[0]} ({app[1]}), number: {phone_number}"])
+                else:
+                    ret.append ([app[1], f"{app[0]} ({app[1]}), numbers: {app[2]}"])
         return ret

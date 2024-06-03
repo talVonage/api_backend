@@ -102,14 +102,19 @@ class Vonage ():
 
     def connect_app(self, app_id=None, app_secret=None):
         if app_id and len(app_id) > 0 and app_secret and len(app_secret) > 0:
-            self._vonage_app = vonage.Client(application_id=app_id, private_key=app_secret)
+            try:
+                self._vonage_app = vonage.Client(application_id=app_id, private_key=app_secret)
 
-            #TODO: // Check how app is connecteed !
-            self._is_app_connected = True
-            self._app_id = app_id
-            self._app_secret = app_secret
-            logger.info(f"Vonage APPLICATION is connected successfully ... ")
-            return self._vonage_app
+                #TODO: // Check how app is connecteed !
+                self._is_app_connected = True
+                self._app_id = app_id
+                self._app_secret = app_secret
+                logger.info(f"Vonage APPLICATION is connected successfully ... ")
+            except Exception as e:
+                self._is_app_connected = False
+                msg = f"Failed application connection: {e}"
+                logger.error (msg)
+        return self._is_app_connected
 
     def is_waba_exists (self, waba_id=None):
         _waba_id = waba_id if waba_id and len(waba_id)>0 else self._waba_id
@@ -209,6 +214,28 @@ class Vonage ():
         self._method.append(f"Props dictionary: {str(_props)}")
         self._method.append(f"vonage.messages.send_message({str(_props)})")
         return _res
+
+    def messages_send_restapi (self, template):
+        url = "https://api.nexmo.com/v1/messages"
+
+        if not self.is_app_connected:
+            return
+
+        try:
+            self._method = self.METHOD_API.copy()
+            self._method.append(f"USING CURL: {url}")
+
+            _url = Rest_Api(url=url)
+            bearer = self._get_app_jwt()
+            _url.set_header('Authorization', bearer)
+            res = _url.post(data=template)
+            logger.info(f"Message send, response: {res}")
+            self._is_ok = True
+            return res
+
+        except Exception as err:
+            self._set_response(f"Error loading WA templates: {err}", self.RESPONSE_FAILED)
+            return
 
     def massage_extract_id(self, res, msg_id="message-id", node_name='messages', msg_error='error-text'):
         m_id = None
@@ -605,8 +632,8 @@ class Vonage ():
         _app_id = app_id if app_id and len(app_id)>0 else self._app_id
         _app_secret = app_secret if app_secret and len(app_secret)>0 else self._app_secret
 
-        if _app_id and _app_secret:
-            return  create_jwt(app_id=_app_id, app_secret_file=_app_secret, app_secret_str=None, expires_hours=None)
+        if _app_id and _app_secret and self.is_app_connected:
+            return  create_jwt(app_id=_app_id, app_secret=_app_secret,expires_hours=None)
         else:
             logger.error (f"Failed to create JWT token for app { _app_id }")
 

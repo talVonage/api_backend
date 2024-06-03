@@ -61,7 +61,7 @@
 		#json_template, #json_send {
 			color: transparent;
 			background: transparent;
-			caret-color: white; /* Or choose your favorite color */
+			caret-color: black; /* Or choose your favorite color */
 		}
 
 		/* Can be scrolled */
@@ -80,29 +80,32 @@
 			tab-size: 2;
 		}
 
-	</style>
+		.container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns of equal width */
+            gap: 10px; /* Optional: Adds space between the columns */
+        }
+        .box {
+            padding: 0px;
+            text-align: left;
+        }
 
+	</style>
 
 	{% for message in msg_list %}
 		<vwc-alert text="{{ message }}" placement="top" removable open></vwc-alert>
     {% endfor %}
 
-	<form id="upload_waba" method="post" action="/submit_waba">
-		<vwc-layout gutters="small" rows-spacing="small">
-		
-			<vwc-select id="wa_waba" name="wa_waba" label="Select an WABA account to connect">
-				{% for item in all_ex_account %}
-					<vwc-option value="{{item[1]}}" text="{{ item[1] }} (Number: {{ item[0] }}; Name: {{ item[2] }}) " ></vwc-option>
-				{% endfor %}
-			</vwc-select>
-
-			<div class="buttons">
-				<vwc-button type="submit" appearance="filled" label="Connect to WABA "></vwc-button>
-			</div>
-			
-		</vwc-layout>
-	</form>
-
+	<vwc-layout gutters="small" rows-spacing="small">
+	
+		<vwc-select id="wa_waba" name="wa_waba" label="Select an WABA account to connect">
+			{% for item in all_ex_account %}
+				<vwc-option value="{{ item[0] }},{{item[1]}}" text="{{ item[1] }} (Number: {{ item[0] }}; Name: {{ item[2] }}) " ></vwc-option>
+			{% endfor %}
+		</vwc-select>
+	
+	</vwc-layout>
+	
 	<form id="submitForm" method="post" action="/submit_wa">
 		<vwc-layout gutters="small" column-spacing="medium">
 			<vwc-layout gutters="small" row-spacing="small" column-basis="block">
@@ -144,30 +147,57 @@
 	</form>
 
 	<vwc-divider role="presentation"></vwc-divider>
-  	Send massages using WhatsApp tamplates
+  		Send massages using WhatsApp tamplates
   	<vwc-divider role="presentation"></vwc-divider>
 
-	<vwc-layout gutters="small" column-spacing="medium">
-		<vwc-layout gutters="small" row-spacing="small" column-basis="block">
-			<vwc-text-field required label="From:" id="send_from" placeholder="" type="tel" name="from" autocomplete="tel"
-						icon="phone-number-line" shape="pill"
-						char-count style="justify-self: flex-start;"></vwc-text-field>
+	
 
-			<vwc-text-field required label="To:" id="send_to" placeholder="" type="tel" name="to" autocomplete="tel"
-						icon="phone-number-line" shape="pill"
-						char-count style="justify-self: flex-start;"></vwc-text-field>
+	<vwc-layout gutters="small" column-spacing="small">
 
-			<vwc-combobox id="wa_combo_exec" name="wa_combo_exec" autocomplete="both" label="Template to execute">
-				<vwc-option id="simpletext" text="Simple text"></vwc-option>
-				{% for  key in all_templates %}
-					<vwc-option id={{key}} text={{key}}></vwc-option>
+		<vwc-layout gutters="small" rows-spacing="small">
+			<vwc-select id="connect_app" name="connect_app" label="Select Application To Connect">
+				{% for item in all_msg_apps %}
+					<vwc-option value="{{ item[0] }}" text="{{ item[1] }}  " ></vwc-option>
 				{% endfor %}
-			</vwc-combobox>
+			</vwc-select>
 
-			<div class="buttons">
-				<vwc-button type="submit" appearance="filled" label="Send message >" appearance="Update OR ave" ></vwc-button>
-				<vwc-button label="Reset" type="reset"></vwc-button>
+			
+			<div class="container">
+				<div class="box">
+					<vwc-file-picker id="secret_file" label="Upload secret file">Drag & Drop or click to upload Application Secret
+						<span slot="helper-text">Upload private key
+							<a href="#">Learn how create an application</a>
+						</span>
+					</vwc-file-picker>
+				</div>	
+				<div class="box">
+					<div class="buttons" style="margin-top: 20px;">
+						<vwc-button id="btn_connect_app"  appearance="filled" label="Connect to Application" ></vwc-button>
+					</div>
+				</div>
 			</div>
+			
+			<div class="container">
+				<div class="box">
+					<vwc-text-field required label="From:" id="send_from" placeholder="" type="tel" name="from" autocomplete="tel"
+						icon="phone-number-line" shape="pill" char-count style="justify-self: flex-start;">
+					</vwc-text-field>
+				</div>	
+			</div>
+
+			<div class="container">
+				<div class="box">
+					<vwc-text-field required label="To:" id="send_to" placeholder="" type="tel" name="to" autocomplete="tel"
+						icon="phone-number-line" shape="pill" char-count style="justify-self: flex-start;">
+					</vwc-text-field>
+				</div>
+				<div class="box">
+					<div class="buttons" style="margin-top: 20px;">
+						<vwc-button id="btn_send_msg" appearance="filled" label="Send message >"></vwc-button>
+					</div>
+				</div>
+			</div>
+			
 		</vwc-layout>
 
 		<div class="parent-textarea">
@@ -208,34 +238,89 @@
 		$(document).ready(function(){
     		$("#upload_application").submit(function(event){
         		event.preventDefault(); // Prevent the form from submitting normally
-        
-				// var formData = new FormData();
-				// formData.append('file', $('#file_app_secret')[0].files[0]);
-			
+			});
+
+			$("#btn_connect_app").click(function(){
+				var formData = new FormData();
+                var file = document.getElementById('secret_file').files[0];
+				var text = document.getElementById('connect_app').value;
+
+                formData.append('file', file);
+				formData.append('text', text);
+
+				const g_msg = document.getElementById('global_msg');
+
 				$.ajax({
-					url: '/submit_waba',
-					type: 'POST',
-					data: $("#wa_waba").val(),
-					processData: false,
-					contentType: 'text/plain',
-					success: function(response) {
-						const g_msg = $("global_msg"); 
-						//const g_msg = document.getElementById('global_msg');
-						console.log (g_msg.text);
-						console.log ("g_msg.text");
-						g_msg.headline = "WABA IS SET !";	
-						g_msg.connotation = "success";
-						g_msg.text= response["data"];
-						g_msg.close=false;
-						g_msg.open=true;
-						console.log(response);
-						// Handle the response from the server if needed
-					},
-					error: function(xhr, status, error) {
-						console.error("Error uploading file:", error);
-					}
-				});
-    		});
+                        url: '/connect_application',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+							console.log("Success:", response);
+                        	if ("data" in response) {
+								g_msg.headline = "APPLICATION IS CONNECTED ...";	
+								g_msg.connotation = "success";
+								g_msg.text= response["data"];
+							}
+							else if ("error" in response) {
+								console.log ("FAILED "+ response["error"]);
+								g_msg.headline = "CONNECTION FAILED !";	
+								g_msg.connotation = "alert";
+								g_msg.text= response["error"];
+							}
+							else {
+								console.log ("RESPONSE ERROR "+ response);
+							}
+							g_msg.close=false;
+							g_msg.open=true;
+                        },
+                        error: function() {
+                            g_msg.headline = "OOOPS... MORE ERRORS ";	
+							g_msg.connotation = "alert";
+							g_msg.close=false;
+							g_msg.open=true;
+                        }
+                    });
+            });
+			
+			$("#btn_send_msg").click(function(){
+                var data = document.getElementById('highlighting2-content').textContent;
+				const g_msg = document.getElementById('global_msg');
+
+				$.ajax({
+                        url: '/wa_exec',
+                        type: 'POST',
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        success: function(response) {
+							console.log("Success:", response);
+                        	if ("data" in response) {
+								g_msg.headline = "SEND MESSAGE SUCCESSFFULY ";	
+								g_msg.connotation = "success";
+								g_msg.text= JSON.stringify(response["data"]);
+							}
+							else if ("error" in response) {
+								console.log ("FAILED "+ response["error"]);
+								g_msg.headline = "SEND MESSAGE FAILED !";	
+								g_msg.connotation = "alert";
+								g_msg.text= response["error"];
+							}
+							else {
+								console.log ("RESPONSE ERROR "+ response);
+							}
+							g_msg.close=false;
+							g_msg.open=true;
+                        },
+                        error: function() {
+                            g_msg.headline = "OOOPS... MORE ERRORS ";	
+							g_msg.connotation = "alert";
+							g_msg.close=false;
+							g_msg.open=true;
+                        }
+                    });
+            });
+
 		});
 
 		document.addEventListener('DOMContentLoaded', function () {
@@ -246,10 +331,31 @@
             var comboLang = document.getElementById('wa_lang');
             var comboCategory= document.getElementById('wa_category');
             var wa_status= document.getElementById('wa_status');
-			var wa_exec= document.getElementById('wa_combo_exec');
 			var text_box_exec = document.getElementById('json_send');
 			var send_from = document.getElementById('send_from');
 			var send_to = document.getElementById('send_to');
+			var select_waba = document.getElementById('wa_waba');
+			var g_msg = document.getElementById('global_msg');
+			var template_combo = $("#wa_combobox"); 
+			var all_templates = {{all_templates | tojson | safe }}
+
+			function update_exec () {
+				if (comboBox.value in all_templates) {
+					var template = all_templates[comboBox.value];
+					
+					if (template && 'exec' in template) {
+						exec_json = template['exec'];
+
+						if ("from" in exec_json) { exec_json["from"] = send_from.value; };
+						if ("to" in exec_json) { exec_json["to"] = send_to.value; };
+
+                		var format_json = JSON.stringify( template['exec'], null, 2);
+						format_json = format_json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+						text_box_exec.value = format_json;
+						update(format_json, '#highlighting2-content');
+                	};
+				};
+			};
 
             // Listen for the change event on the combobox
             comboBox.addEventListener('change', function () {
@@ -278,30 +384,58 @@
                 	if (template && 'status' in template) {
                 		wa_status.value = template['status'];
                 	}
+					update_exec ();
             	}
             });
 
-			wa_exec.addEventListener('change', function () {
-				if (wa_exec.value in all_templates) {
-					console.log ("TAL 123", all_templates[wa_exec.value]);
-					var exec = all_templates[wa_exec.value];
-					if (exec && 'exec' in exec) {
-						console.log ("TAL 456", exec['exec']);
-						exec_template=exec['exec'] ;
-						if ("from" in exec_template) {
-							exec_template["from"] = send_from.value;
-						}
-						if ("to" in exec_template) {
-							exec_template["to"] = send_to.value;
-						} 
-						format_json = JSON.stringify(exec_template, null, 2);
-                		text_box_exec.value = format_json
-						update(format_json, '#highlighting2-content');
-                	}
-				}
-			});	
+			select_waba.addEventListener('change', function () {
+				template_combo.empty();
+				$.ajax({
+					url: '/submit_waba',
+					type: 'POST',
+					data: $("#wa_waba").val().split(",")[1],
+					processData: false,
+					contentType: 'text/plain',
+					success: function(response) {
+						send_from.value = $("#wa_waba").val().split(",")[0];
+						
+						if ("data" in response) {
+							console.log ("SUCCESS "+ response["data"]);
+							g_msg.headline = "WABA IS SET !";	
+							g_msg.connotation = "success";
+							g_msg.text= response["data"];
+							all_templates = response["templates"];
+                        	$.each(all_templates, function(key, value) {	
+                            	template_combo.append("<vwc-option text=" + key + "></vwc-option>");
+                        	});
 
+						}
+						else if ("error" in response) {
+							console.log ("FAILED "+ response["error"]);
+							g_msg.headline = "WABA FAILED !";	
+							g_msg.connotation = "alert";
+							g_msg.text= response["error"];
+						}
+						else {
+							console.log ("RESPONSE ERROR "+ response);
+						}
+						
+						g_msg.close=false;
+						g_msg.open=true;
+						// Handle the response from the server if needed
+					},
+					error: function(xhr, status, error) {
+						console.error("Error uploading file:", error);
+					}
+				});
+    		}); 
+			
+			$('#send_from, #send_to').on('input', function() {
+            	update_exec ();
+        	});
+				
         });
+
 		// Global functions
 
 		function list_to_lines (list_strings) {
@@ -402,26 +536,6 @@
 				update(element.value); // Update text to include indent
 			}
 		}
-
-		/* OLD VERSION - TO DELETE
-        // Attach an event listener to the form to prevent the default submit action
-        document.getElementById('submitForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            // Get form data
-            var username = document.getElementById('from').value;
-            var phone = document.getElementById('to').value;
-
-            // Emit a message to the server using SocketIO
-            socket.emit('submit_event', {'username': username, 'phone': phone});
-
-            // You can also emit to a specific client using 'room' argument
-            // socket.emit('submit_event', {'username': username, 'phone': phone, 'room': socket.id});
-
-            // Clear the form
-            this.reset();
-        });
-		*/
 
     </script>
 {% endblock content %}

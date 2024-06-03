@@ -2,7 +2,7 @@
 GLOBAL FUNCTION
 """
 
-import os, socket, jwt
+import os, socket, jwt, re
 from time import time
 from uuid import uuid4
 import base64
@@ -43,20 +43,16 @@ def ping_url(url, port=None ):
     return is_open
 
 
-def create_jwt (app_id, app_secret_file=None, app_secret_str=None, expires_hours=None):
+def create_jwt (app_id, app_secret, expires_hours=None):
+    if isinstance(app_secret, (str, bytes)) and re.search("[.][a-zA-Z0-9_]+$", app_secret):
+        with open(app_secret, "rb") as key_file:
+            app_secret = key_file.read()
+    elif isinstance(app_secret, str) and '-----BEGIN PRIVATE KEY-----' not in app_secret:
+        print("If passing the private key directly as a string, it must be formatted correctly with newlines.")
+
     algorithm = 'RS256'
-    if app_secret_file:
-        if not os.path.isfile(app_secret_file):
-            print (f"SECRET FILE PATH {app_secret_file} IS NOT EXISTS ")
-            return
-        with open(app_secret_file, 'r') as file:
-            app_secret =  file.read().strip()
-    elif app_secret_str:
-        algorithm = 'HS256'
-        app_secret = app_secret_str
-    else:
-        print (f"MUST DECLARE app_secret_file or app_secret_str to load secret key")
-        return
+    # algorithm = 'HS256'
+
 
     iat = int(time())
     payload = {
@@ -67,8 +63,13 @@ def create_jwt (app_id, app_secret_file=None, app_secret_str=None, expires_hours
 
     if expires_hours:
         payload["exp"] = iat + (expires_hours * 60)
+    else:
+        iat + (15 * 60)
+
+    payload['exp']  = expires_hours
 
     headers = {'alg': algorithm, 'typ': 'JWT'}
+
     token = jwt.encode(payload, app_secret, algorithm=algorithm, headers=headers)
     token_str = f"Bearer {token}"
 
