@@ -341,13 +341,13 @@
         // Facebook Login with JavaScript SDK
         function launchWhatsAppSignup() {
             var c_name = $("#company_name").val();
-            var c_mail = $("#company_mail").val();
+            var c_mail = $("#company_email").val();
             var c_website = $("#company_website").val();
             var phone_number = $("#wa_number").val();
             
             var config_id = '995782168666847'
             var solution_id = '842627454528807'
-
+                
             // Launch Facebook login
             FB.login(
                 function (response) {
