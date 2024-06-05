@@ -38,35 +38,21 @@ thread = None
 thread_lock = Lock()
 thread_event = Event()
 
+users_dict = {}
+
 """ Global variables """
-von_api = Backend_Ui_Api()
 
+""" Return is_connected, _api, msg_conn, api_keys,phone_numbers,apps """
 def connect_api ():
-    if von_api.is_api_connect:
-        if "key" not in session:
-            von_api.disconnect()
-            session["connect"] = False
-            return False, "Not Connected To Vonage API"
-        else:
-            session["connect"] = True
-            return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
-
-    is_form = bool(request.form)
-    if is_form and not von_api.is_api_connect:
-        api_key = request.form.get('api_key')
-        api_secret = request.form.get('api_sec')
-
-        if api_key and len(api_key)>0 and api_secret and len(api_secret)>0:
-            session["key"] = api_key
-            session["secret"] = api_secret
-            von_api.connect_api(api_key=session["key"], api_secret=session["secret"])
-            if von_api.is_api_connect:
-                session["connect"]=True
-                return session["connect"], f"Connected To Vonage, API Key:{von_api.app_key}"
-            else:
-                return False, f"Error connecting to Vonage API using {api_key} key"
-
-    return False, "Not Connected To Vonage API"
+    if "key" in session and session["key"] in users_dict:
+        msg = f"Connected To Vonage, API Key:{session['key']}"
+        api_keys = users_dict[ session["key"] ].subapi
+        phone_numbers = users_dict[ session["key"] ].all_numbers
+        apps = users_dict[ session["key"] ].apps
+        return True, users_dict[ session["key"] ], msg, api_keys, phone_numbers, apps
+    else:
+        msg = f"Error connecting to Vonage API "
+        return False, None, msg, {}, {}, {}
 
 """ Application routes  """
 @app.get('/_/health')
@@ -75,10 +61,7 @@ async def health():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    is_connected, msg_conn = connect_api ()
-    api_keys = von_api.subapi
-    phone_numbers = von_api.all_numbers
-    apps = von_api.apps
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
 
     return render_template('main.html',
                            msg_dict={},
@@ -92,12 +75,20 @@ def index():
 """ Submit api key and secret """
 @app.route('/submit_api', methods=['POST'])
 def submit_api():
-    is_connected, msg_conn = connect_api()
-    api_keys = von_api.subapi
-    phone_numbers = von_api.all_numbers
-    apps = von_api.apps
+    #is_form = bool(request.form)
+    #if is_form:
+    api_key = request.form.get('api_key')
+    api_secret = request.form.get('api_sec')
 
+    if api_key and len(api_key) > 0 and api_secret and len(api_secret) > 0:
+        session["key"] = api_key
+        session["secret"] = api_secret
+        _api = Backend_Ui_Api()
+        _api.connect_api(api_key=session["key"], api_secret=session["secret"])
+        if _api.is_api_connect:
+            users_dict[api_key] = _api
 
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
     return render_template('main.html',
                            msg_dict={},
                            async_mode=socketio.async_mode,
@@ -109,7 +100,7 @@ def submit_api():
 
 @app.route('/sms')
 def sms():
-    is_connected, msg_conn = connect_api()
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
     return render_template('sms.html',
                            is_connected=is_connected,
                            msg_conn=msg_conn,
@@ -117,36 +108,36 @@ def sms():
 
 @app.route('/verify')
 def verify():
-    is_connected, msg_conn = connect_api()
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
     return render_template('verify.html',is_connected=is_connected,
                            msg_conn=msg_conn,
                            msg_dict={})
 
 @app.route('/voice')
 def voice():
-    is_connected, msg_conn = connect_api()
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
     return render_template('voice.html',is_connected=is_connected,
                            msg_conn=msg_conn,
                            msg_dict={})
 
 @app.route('/wa_templates')
 def wa_templates():
-    is_connected, msg_conn = connect_api()
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps  = connect_api ()
     all_templates, all_ex_account, all_msg_apps = {}, [], []
 
-
     if is_connected:
-        all_ex_account = von_api.get_external_account(provider="whatsapp")
-        if all_ex_account and len(all_ex_account)>0 and not von_api.waba_id:
-            von_api.waba_id = all_ex_account[0][1]          #WABA ID FROM LIST OF LISTS
-            all_msg_apps = von_api.get_application_messages(all_ex_account[0][0])  #PHONE NUMBER FROM LIST OF LISTS
+        all_ex_account = _api.get_external_account(provider="whatsapp")
+        if all_ex_account and len(all_ex_account)>0 and not _api.waba_id:
+            _api.waba_id = all_ex_account[-1][1]          #WABA ID FROM LIST OF LISTS
+            all_msg_apps = _api.get_application_messages(all_ex_account[-1][0])  #PHONE NUMBER FROM LIST OF LISTS
         else:
-            all_msg_apps = von_api.get_application_messages()
-        all_templates = von_api.wa_templates_get()
+            all_msg_apps = _api.get_application_messages()
+
+    all_templates = _api.wa_templates_get()
 
     return render_template('wa_template.html', all_templates=all_templates,
-                           wa_categories=von_api.WA_CATEGORIES,
-                           wa_lang=von_api.WA_LANGUAGES,
+                           wa_categories=_api.WA_CATEGORIES,
+                           wa_lang=_api.WA_LANGUAGES,
                            msg_dict={},
                            all_ex_account=all_ex_account,
                            all_msg_apps=all_msg_apps,
@@ -155,54 +146,54 @@ def wa_templates():
 
 @app.route('/wa_exec', methods=['POST'])
 def wa_exec():
-
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     try:
         req = request.get_json()
         template = json.loads(req)
         if template and len(template)>0:
-            res = von_api.wa_send(template=template)
-            return {von_api.RESPONSE_SUCCESS:res}
+            res = _api.wa_send(template=template)
+            return {_api.RESPONSE_SUCCESS:res}
         else:
-            return {von_api.RESPONSE_FAILED: "Empty template to send "}
+            return {_api.RESPONSE_FAILED: "Empty template to send "}
     except:
-        return {von_api.RESPONSE_FAILED: "Error loading template "}
+        return {_api.RESPONSE_FAILED: "Error loading template "}
 
 @app.route('/submit_waba', methods=['POST'])
 def submit_waba():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     waba_id       = request.data.decode('utf-8')
     if waba_id and len(waba_id)>0:
-        von_api.waba_id = waba_id
-
-    is_connected, msg_conn = connect_api()
+        _api.waba_id = waba_id
 
     if is_connected:
-        all_templates = von_api.wa_templates_get()
-        msg = {von_api.RESPONSE_SUCCESS:f"Using WABA ID {waba_id}", "templates":all_templates}
+        all_templates = _api.wa_templates_get()
+        msg = {_api.RESPONSE_SUCCESS:f"Using WABA ID {waba_id}", "templates":all_templates}
     else:
-        msg = {von_api.RESPONSE_FAILED: f"Failed to upload  WABA ID ", "templates": {}}
+        msg = {_api.RESPONSE_FAILED: f"Failed to upload  WABA ID ", "templates": {}}
     return msg
 
 @app.route('/submit_wa', methods=['POST'])
 def submit_wa():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     selected_name       = request.form.get('wa_combobox')
     selected_component  = request.form.get('json_template')
     selected_lang       = request.form.get('wa_lang')
     selected_category   = request.form.get('wa_category')
 
-    res = von_api.wa_update_template(name=selected_name, component=selected_component)
+    res = _api.wa_update_template(name=selected_name, component=selected_component)
     print (res)
 
-    all_templates = von_api.wa_get_templates()
+    all_templates = _api.wa_get_templates()
 
     return render_template('wa_template.html', all_templates=all_templates,
-                           wa_categories=von_api.WA_CATEGORIES,
-                           wa_lang=von_api.WA_LANGUAGES,
+                           wa_categories=_api.WA_CATEGORIES,
+                           wa_lang=_api.WA_LANGUAGES,
                            msg_dict=res)
 
 @app.route('/tech')
 def tech():
-    is_connected, msg_conn = connect_api()
-    phone_numbers = von_api.all_numbers
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
+
     return render_template('tech.html',
                            all_numbers=phone_numbers,
                            msg_dict={},
@@ -211,8 +202,7 @@ def tech():
 
 @app.route('/tech2')
 def tech2():
-    is_connected, msg_conn = connect_api()
-    phone_numbers = von_api.all_numbers
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     return render_template('wa_template_javier.html',
                            all_numbers=phone_numbers,
                            msg_dict={},
@@ -221,16 +211,18 @@ def tech2():
 
 @app.route('/tech_reg_validate_number', methods=['POST'])
 def tech_reg_number ():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     num = request.data.decode('utf-8')
-    res = von_api.wa_embedded_valid_number(number=num)
+    res = _api.wa_embedded_valid_number(number=num)
     return res
 
 @app.route('/tech_reg_load_numbers', methods=['POST'])
 def tech_reg_load_numbers ():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     country = request.get_json().get('country')
     numbers = []
     if country and len(country)>0:
-        numbers=von_api.get_numbers_to_buy (country)
+        numbers=_api.get_numbers_to_buy (country)
         if numbers and len(numbers)>0:
             numbers = [num[0] for num in numbers]
 
@@ -238,22 +230,25 @@ def tech_reg_load_numbers ():
 
 @app.route('/tech_reg_call_foreword', methods=['POST'])
 def tech_reg_call_foreword ():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     data = request.get_json()
     from_number = data.get("from")
     to_number = data.get("to")
-    res = von_api.wa_embedded_call_foreword (from_number, to_number, to_disable=False)
+    res = _api.wa_embedded_call_foreword (from_number, to_number, to_disable=False)
     return res
 
 @app.route('/tech_reg_call_foreword_disabled', methods=['POST'])
 def tech_reg_call_foreword_disabled ():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     data = request.get_json()
     from_number = data.get("from")
     to_number = data.get("to")
-    res = von_api.wa_embedded_call_foreword (from_number, to_number, to_disable=True)
+    res = _api.wa_embedded_call_foreword (from_number, to_number, to_disable=True)
     return res
 
 @app.route('/tech_reg', methods=['GET', 'POST'])
 def tech_reg ():
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     wa_code = request.get_json()
     status  = wa_code.get('status')
     resp    = wa_code.get('authResponse')
@@ -261,7 +256,7 @@ def tech_reg ():
     ret_json = {"msg": f"WA RESPONSE \n {wa_code}", "id": "", "numbers": []}
     if resp and "code" in resp:
         exchange_code = resp["code"]
-        resp = von_api.wa_embedded_debug_token (exchange_code=exchange_code)
+        resp = _api.wa_embedded_debug_token (exchange_code=exchange_code)
         ret_json = resp if resp and len(resp)>0 else ret_json
 
     print (f"SERVER: EMBEDDED SIGN UP RESPONSE: {ret_json}")
@@ -269,9 +264,17 @@ def tech_reg ():
 
 @app.route('/connect_application', methods=[  'POST'])
 def connect_application ():
-
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     uploaded_file = request.files.get('file')
     app_id = request.form.get('text')
+    app_name = None
+    url_host = request.form.get('url_host')
+
+    all_apps = _api.apps
+    for app in all_apps:
+        if app[1] == app_id:
+            app_name = app[0]
+            break
 
     if uploaded_file:
         file_name = uploaded_file.filename
@@ -280,9 +283,12 @@ def connect_application ():
             file_content = file_content.decode('utf-8')
             session["app_key"] = app_id
             session["app_secret"] = file_content
-            app = von_api.connect_app(session=session)
+            app = _api.connect_app(session=session)
             if app:
-                return {"data":f"Connected to app {app_id}"}
+                if app_id and app_name and url_host:
+                    res = _api.update_application_webhooks(app_id=app_id, app_name=app_name, url_domain=url_host)
+                    return {"data": f"Connected to app {app_id}, {res}"}
+                return {"data":f"Connected to app {app_id}, Webhooks not configures"}
             else:
                 return {"error": f"Error connecting to application"}
     else:
@@ -299,16 +305,25 @@ def sms_delivery():
 
 @app.route('/webhooks/inbound', methods=['POST'])
 def sms_inbound():
-    print ("** SMS Delivery Webhook **")
+    print ("** inbound Webhook **")
     data = request.get_json()
     print (data)
-    socketio.emit('response_sms', f"SMS INBOUND >>>>  {str(data)} ")
+    socketio.emit('response_sms', f"INBOUND >>>>  {str(data)} ")
+    return ("message_status", 200)
+
+@app.route('/webhooks/status', methods=['POST'])
+def sms_status():
+    print ("** status Webhook **")
+    data = request.get_json()
+    print (data)
+    socketio.emit('response_sms', f"STATUS >>>>  {str(data)} ")
     return ("message_status", 200)
 
 
 """ Sockets / Real time events"""
 @socketio.on('submit_sms')
 def handle_submit(data):
+    is_connected, _api, msg_conn, api_keys, phone_numbers, apps = connect_api()
     api_key     = get_not_none (data.get('api_key'),Config.API_KEY)
     api_secret  = get_not_none (data.get('api_sec'), Config.API_SECRET)
     send_from   = data.get('send_from')
@@ -317,9 +332,9 @@ def handle_submit(data):
     is_sdk= data.get('is_sdk')
 
     if is_sdk:
-        resp = von_api.sms_send_sdk(send_from=send_from, send_to=send_to, msg=msg)
+        resp = _api.sms_send_sdk(send_from=send_from, send_to=send_to, msg=msg)
     else:
-        resp = von_api.sms_send_restapi(send_from=send_from, send_to=send_to, msg=msg)
+        resp = _api.sms_send_restapi(send_from=send_from, send_to=send_to, msg=msg)
 
     logging.info (f"SEND SMS RESPONSE: {resp}")
 
@@ -327,39 +342,12 @@ def handle_submit(data):
     socketio.emit('response_sms', resp )
 
     # Add ELK Data
-    if von_api.msg_id is not None:
+    if _api.msg_id is not None:
         global thread
         with thread_lock:
             if thread is None:
                 thread_event.set()
                 thread = socketio.start_background_task( elk_thread, api_key, von_api.msg_id, thread_event, 100)
-
-    # You can also emit to a specific client using 'room' argument
-    # socketio.emit('log', f"Form submitted - Username: {username}, Phone: {phone}", room=request.sid)
-
-"""" OLD VERSION !!!!  
-@app.route('/sms_send', methods=['POST'])
-def sms_send():
-    msg_from= request.form['from']
-    msg_to  = request.form['to']
-    msg_text= request.form['msg']
-
-    print ("TAL ")
-    print (msg_to, msg_from, msg_text)
-
-    socketio.emit('submit_event', f"YYYYYY Form submitted - Username: {msg_from}, Phone: {msg_text}")
-
-    return redirect(url_for('sms'))
-    #return render_template('sms.html',msg_list=['olla','walla'])
-
-@socketio.on('custom_event')
-def handle_custom_event(data):
-    # Process the data (you can replace this with your backend logic)
-    print(f"Received data: {data}")
-
-    # Emit a message to the connected clients using SocketIO
-    socketio.emit('log', f"Custom event received - Data: {data}")
-"""
 
 """ ELK listener"""
 def elk_thread(api_key, msg_id, event, max_seconds=60 ):

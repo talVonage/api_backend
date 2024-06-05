@@ -107,6 +107,23 @@
     Embeded Sign Up
     <vwc-divider role="presentation"></vwc-divider>
 
+    <div style="display: flex; flex-direction: row; gap: 10px;">
+
+        <vwc-text-field required label="Solution ID" id="sol_id" name="sol_id" type="text" shape="pill"
+                        placeholder="842627454528807" value="842627454528807" autocomplete="text" icon="gear-line" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <vwc-text-field required label="Config Id" id="conf_id" name="conf_id" type="text" shape="pill"
+                        placeholder="995782168666847" value="995782168666847" autocomplete="text" icon="gear-line" char-count style="justify-self: flex-start;">
+        </vwc-text-field>
+
+        <button id="btn_embeded_default"
+                style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; margin-top: 25px; padding: 0 24px;">
+            Set Default Solution Id && Config Id    
+        </button>
+
+    </div>
+
     <div style="display: flex; align-items: center; /*justify-content: center;*/"> 
 
         <button onclick="launchWhatsAppSignup()"
@@ -137,7 +154,6 @@
 
     </div>
      
-
     <script>
         // upload available number to purchase that can be validate as whatsapp numbers 
         const select = document.querySelector('vwc-select');
@@ -312,6 +328,12 @@
                     }
                 });
             });
+            
+            $("#btn_embeded_default").click(function(){
+                $("#conf_id").val('995782168666847');
+                $("#sol_id").val('842627454528807');
+            });
+        
         });
 
         window.fbAsyncInit = function () {
@@ -345,9 +367,11 @@
             var c_website = $("#company_website").val();
             var phone_number = $("#wa_number").val();
             
-            var config_id = '995782168666847'
-            var solution_id = '842627454528807'
-                
+            var config_id = $("#conf_id").val() || '995782168666847';
+            var solution_id = $("#sol_id").val() || '842627454528807'
+            console.log ("FB EMBEDED: Configuartion ID: "+config_id+" ; Solution ID: "+solution_id);
+            console.log ("Add Data :"+c_name+" ; email: "+c_mail+" ; number: "+phone_number);
+
             // Launch Facebook login
             FB.login(
                 function (response) {
@@ -376,7 +400,6 @@
                                 console.error("Error sending message:", error);
                             }
                         });
-
                         
                     } else {
                         console.log('User cancelled login or did not fully authorize.');
@@ -404,9 +427,6 @@
     </script>
 
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-
-
-
 
 {% endblock content %}
 

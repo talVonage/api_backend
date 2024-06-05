@@ -150,12 +150,11 @@
   		Send massages using WhatsApp tamplates
   	<vwc-divider role="presentation"></vwc-divider>
 
-	
 
 	<vwc-layout gutters="small" column-spacing="small">
 
 		<vwc-layout gutters="small" rows-spacing="small">
-			<vwc-select id="connect_app" name="connect_app" label="Select Application To Connect">
+			<vwc-select id="connect_app" name="connect_app" label="Select Application To Connect and update webhooks">
 				{% for item in all_msg_apps %}
 					<vwc-option value="{{ item[0] }}" text="{{ item[1] }}  " ></vwc-option>
 				{% endfor %}
@@ -172,7 +171,7 @@
 				</div>	
 				<div class="box">
 					<div class="buttons" style="margin-top: 20px;">
-						<vwc-button id="btn_connect_app"  appearance="filled" label="Connect to Application" ></vwc-button>
+						<vwc-button id="btn_connect_app"  appearance="filled" label="Connect && Webooks Update" ></vwc-button>
 					</div>
 				</div>
 			</div>
@@ -214,19 +213,19 @@
 	</vwc-layout>
 
 	<vwc-divider role="presentation"></vwc-divider>
-		Web hookks logs
+		Webhooks Logs
 	<vwc-divider role="presentation"></vwc-divider>
 
 	<vwc-layout gutters="small" row-spacing="small" column-basis="block">
 		<vwc-card elevation="3">
 			<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line">
-				<b>Webhook logs </b>
+				<b>Webhooks Logs.. </b>
 				<div id="sms_logs"></div>
 			</vwc-layout>
 		</vwc-card>
 		<vwc-card elevation="3" auto-sizing="fill">
 			<vwc-layout column-basis="block" gutters="small" slot="main" icon="chat-line" auto-sizing="fill">
-				<b>ELK logs </b>
+				<b>ELK Logs... </b>
 				<div id="elk_logs"></div>
 			</vwc-layout>
 		</vwc-card>
@@ -244,9 +243,11 @@
 				var formData = new FormData();
                 var file = document.getElementById('secret_file').files[0];
 				var text = document.getElementById('connect_app').value;
+				var url_host = window.location.protocol+'//' + document.domain + ':' + location.port
 
                 formData.append('file', file);
 				formData.append('text', text);
+				formData.append('url_host', url_host);
 
 				const g_msg = document.getElementById('global_msg');
 
@@ -287,6 +288,8 @@
 			$("#btn_send_msg").click(function(){
                 var data = document.getElementById('highlighting2-content').textContent;
 				const g_msg = document.getElementById('global_msg');
+				document.getElementById('sms_logs').innerHTML = "";
+				document.getElementById('elk_logs').innerHTML = "";
 
 				$.ajax({
                         url: '/wa_exec',
@@ -455,29 +458,8 @@
 
         // Listen for 'sms_logs' events and append logs to the #logs div
         socket.on('response_sms', function(data) {
-        	if ('error' in data) {
-        		const alert = document.getElementById('global_alert');
-        		if (!alert) {
-					const alert = document.createElement('vwc-banner')
-        			div_alert.appendChild( alert );
-        			alert.id = "global_alert";
-					alert.connotation="alert";
-					alert.text = data.error;
-					alert.removable="removable";
-        		}
-				else {
-					alert?.removeAttribute('hidden');
-					alert.text = data.error;
-				}
-			} else if ('data' in data) {
-				data = `<span>${data.data}</span>`
-				const data_parsed = list_to_lines(data.data);
-				document.getElementById('sms_logs').innerHTML += '<p>' + data + '</p>';
-				console.log('Data:', data);
-				// Process the data as needed
-			} else {
-				console.warn('No error or data keys found in the received JSON.');
-			}
+			console.log('Response webhooks :: ', data);
+        	document.getElementById('sms_logs').innerHTML += '<p>' + data + '</p>';
         });
 
         // Example: Emit sms data

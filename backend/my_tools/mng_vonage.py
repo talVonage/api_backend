@@ -626,6 +626,42 @@ class Vonage ():
         logger.info (f"External accounts: {ret}")
         return ret
 
+    def application_message_update (self, app_id, app_name, url_domain ):
+        ret = []
+        if not self._is_api_connected or not self._api_bearer:
+            logger.error(f"application_message_update:-> Not connected to Vonage API")
+            return
+
+        url = f"https://api.nexmo.com/v2/applications/{app_id}"
+        try:
+            url_inbound = f"{url_domain}/webhooks/inbound"
+            url_status = f"{url_domain}/webhooks/status"
+            data = {    "name": app_name,
+                        "capabilities": {
+                            "messages": {
+                                "webhooks": {
+                                    "inbound_url": { "address": url_inbound, "http_method": "POST" },
+                                    "status_url": { "address": url_status, "http_method": "POST"}
+                                }
+                            }
+                        }
+                    }
+            self._method = self.METHOD_API.copy()
+            self._method.append(f"USING CURL: {url}")
+
+            _url = Rest_Api(url=url)
+            _url.set_header('Authorization', self._api_bearer)
+            _res = _url.put(data=data)
+            if _res and "capabilities" in _res and "messages" in _res["capabilities"] and "webhooks" in _res["capabilities"]["messages"]:
+                url_in = _res["capabilities"]["messages"]["webhooks"]["inbound_url"]["address"]
+                url_st = _res["capabilities"]["messages"]["webhooks"]["status_url"]["address"]
+                return f"SET UP WEBHOOKS: {url_in}, {url_st}"
+            else:
+                return f"FAILED: {_res}"
+
+        except Exception as err:
+            return f"ERROR: {err}"
+
 
     """ INTERNAL HELP FUNCTIONS - PRIVATE METHODS """
     def _get_app_jwt (self, app_id=None, app_secret=None):

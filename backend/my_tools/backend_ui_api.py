@@ -29,7 +29,7 @@ class Backend_Ui_Api ():
         self._api = Vonage(waba_id=self._waba_id)
 
 
-    def connect_api (self,  api_key=None, api_secret=None):
+    def connect_api (self,   api_key=None, api_secret=None, session=None):
         self._api_key = get_not_none(api_key, self._api_key,  Config.API_KEY)
         self._api_secret = get_not_none(api_secret, self._api_secret, Config.API_SECRET)
 
@@ -41,9 +41,9 @@ class Backend_Ui_Api ():
         self._api._vonage = None
         self._api._vonage_app = None
 
-    def connect_app (self, session):
-        app_id = session["app_key"] if session and "app_key" in session else None
-        app_secret = session["app_secret"] if session and "app_secret" in session else None
+    def connect_app (self, session=None, app_id=None,app_secret=None ):
+        app_id = session["app_key"] if session and "app_key" in session else app_id
+        app_secret = session["app_secret"] if session and "app_secret" in session else app_secret
         self._application_id = get_not_none(app_id, self._application_id, Config.APPLICATION_KEY)
         self._application_secret = get_not_none(app_secret, self._application_secret, Config.APPLICATION_SECRET)
 
@@ -213,3 +213,6 @@ class Backend_Ui_Api ():
                 else:
                     ret.append ([app[1], f"{app[0]} ({app[1]}), numbers: {app[2]}"])
         return ret
+
+    def update_application_webhooks (self, app_id, app_name, url_domain):
+         return self._api.application_message_update(app_id=app_id, app_name=app_name, url_domain=url_domain)
